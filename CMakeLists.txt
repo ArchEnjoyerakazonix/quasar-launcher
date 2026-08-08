@@ -13,6 +13,7 @@ qt_standard_project_setup()
 # 1. Main Launcher Executable
 qt_add_executable(nexus-launcher
     src/main.cpp
+    src/launchercontroller.h
     src/appindexer.cpp
     src/appindexer.h
     src/fuzzymatcher.cpp

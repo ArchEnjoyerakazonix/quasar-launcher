@@ -5,11 +5,11 @@ import Nexus 1.0
 
 Window {
     id: window
-    width: 960
-    height: 640
+    width: 940
+    height: 620
     visible: true
-    title: "Nexus Launcher Theme Studio"
-    color: "#11111b"
+    title: "Nexus Theme Selector"
+    color: "#1e1e2e"
 
     RowLayout {
         anchors.fill: parent
@@ -18,17 +18,17 @@ Window {
         // Left Panel - Settings Controls
         ScrollView {
             Layout.fillHeight: true
-            Layout.preferredWidth: 500
+            Layout.preferredWidth: 480
             clip: true
 
             ColumnLayout {
                 width: parent.width - 24
-                spacing: 16
+                spacing: 14
 
                 Text {
-                    text: "🎨 Theme Presets"
+                    text: "Theme Presets"
                     color: "#89b4fa"
-                    font.pixelSize: 18
+                    font.pixelSize: 16
                     font.bold: true
                     Layout.topMargin: 12
                 }
@@ -52,21 +52,21 @@ Window {
                 Rectangle { Layout.fillWidth: true; height: 1; color: "#313244" }
 
                 Text {
-                    text: "📐 Layout Mode"
+                    text: "Layout Mode"
                     color: "#89b4fa"
-                    font.pixelSize: 16
+                    font.pixelSize: 15
                     font.bold: true
                 }
 
                 Row {
-                    spacing: 12
+                    spacing: 10
                     PresetButton {
-                        presetName: "📋 Rofi List"
+                        presetName: "Vertical List"
                         isSelected: ThemeManager.layoutMode === "list"
                         onClicked: ThemeManager.layoutMode = "list"
                     }
                     PresetButton {
-                        presetName: "🔲 Spotlight Grid"
+                        presetName: "Grid View"
                         isSelected: ThemeManager.layoutMode === "grid"
                         onClicked: ThemeManager.layoutMode = "grid"
                     }
@@ -75,14 +75,14 @@ Window {
                 Rectangle { Layout.fillWidth: true; height: 1; color: "#313244" }
 
                 Text {
-                    text: "🎨 Colors"
+                    text: "Colors"
                     color: "#89b4fa"
-                    font.pixelSize: 16
+                    font.pixelSize: 15
                     font.bold: true
                 }
 
                 Column {
-                    spacing: 8
+                    spacing: 6
                     Layout.fillWidth: true
 
                     ColorPickerRow {
@@ -120,15 +120,15 @@ Window {
                 Rectangle { Layout.fillWidth: true; height: 1; color: "#313244" }
 
                 Text {
-                    text: "⚙️ Geometry & Metrics"
+                    text: "Geometry & Style"
                     color: "#89b4fa"
-                    font.pixelSize: 16
+                    font.pixelSize: 15
                     font.bold: true
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 8
+                    spacing: 6
 
                     RowLayout {
                         Text { text: "Prompt Prefix:"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 140 }
@@ -137,7 +137,7 @@ Window {
                             height: 28
                             color: "#181825"
                             border.color: "#313244"
-                            radius: 6
+                            radius: 4
                             TextInput {
                                 anchors.fill: parent
                                 anchors.margins: 4
@@ -151,17 +151,17 @@ Window {
                     }
 
                     RowLayout {
-                        Text { text: "Background Opacity (" + Math.round(ThemeManager.bgOpacity * 100) + "%):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 180 }
+                        Text { text: "Opacity (" + Math.round(ThemeManager.bgOpacity * 100) + "%):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 160 }
                         Slider {
                             Layout.fillWidth: true
-                            from: 0.2; to: 1.0
+                            from: 0.3; to: 1.0
                             value: ThemeManager.bgOpacity
                             onMoved: ThemeManager.bgOpacity = value
                         }
                     }
 
                     RowLayout {
-                        Text { text: "Border Radius (" + ThemeManager.borderRadius + "px):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 180 }
+                        Text { text: "Border Radius (" + ThemeManager.borderRadius + "px):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 160 }
                         Slider {
                             Layout.fillWidth: true
                             from: 0; to: 24; stepSize: 1
@@ -171,7 +171,7 @@ Window {
                     }
 
                     RowLayout {
-                        Text { text: "Font Size (" + ThemeManager.fontSize + "px):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 180 }
+                        Text { text: "Font Size (" + ThemeManager.fontSize + "px):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 160 }
                         Slider {
                             Layout.fillWidth: true
                             from: 10; to: 20; stepSize: 1
@@ -181,7 +181,7 @@ Window {
                     }
 
                     RowLayout {
-                        Text { text: "Icon Size (" + ThemeManager.iconSize + "px):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 180 }
+                        Text { text: "Icon Size (" + ThemeManager.iconSize + "px):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 160 }
                         Slider {
                             Layout.fillWidth: true
                             from: 16; to: 64; stepSize: 4
@@ -191,7 +191,7 @@ Window {
                     }
 
                     RowLayout {
-                        Text { text: "Window Width (" + ThemeManager.windowWidth + "px):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 180 }
+                        Text { text: "Window Width (" + ThemeManager.windowWidth + "px):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 160 }
                         Slider {
                             Layout.fillWidth: true
                             from: 400; to: 900; stepSize: 10
@@ -201,7 +201,7 @@ Window {
                     }
 
                     RowLayout {
-                        Text { text: "Window Height (" + ThemeManager.windowHeight + "px):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 180 }
+                        Text { text: "Window Height (" + ThemeManager.windowHeight + "px):"; color: "#cdd6f4"; font.pixelSize: 13; Layout.preferredWidth: 160 }
                         Slider {
                             Layout.fillWidth: true
                             from: 300; to: 700; stepSize: 10
@@ -235,9 +235,9 @@ Window {
                 spacing: 12
 
                 Text {
-                    text: "👁️ Real-time Preview"
+                    text: "Live Preview"
                     color: "#89b4fa"
-                    font.pixelSize: 16
+                    font.pixelSize: 15
                     font.bold: true
                 }
 
@@ -259,7 +259,7 @@ Window {
                         // Preview Input Bar
                         Rectangle {
                             width: parent.width
-                            height: ThemeManager.fontSize * 2 + 12
+                            height: ThemeManager.fontSize * 2 + 10
                             radius: ThemeManager.borderRadius
                             color: Qt.alpha(ThemeManager.cardColor, ThemeManager.cardOpacity)
                             border.color: ThemeManager.accentColor
@@ -288,7 +288,7 @@ Window {
                             }
                         }
 
-                        // Preview Item List / Grid
+                        // Preview Item List
                         Column {
                             width: parent.width
                             spacing: 4
@@ -320,13 +320,6 @@ Window {
                                         color: "#ffffff"
                                         font.pixelSize: ThemeManager.fontSize
                                         font.bold: true
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-
-                                    Text {
-                                        text: "web browser"
-                                        color: "#ffffffaa"
-                                        font.pixelSize: ThemeManager.fontSize - 2
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
                                 }
@@ -425,27 +418,14 @@ Window {
                                     Text { text: "Kitty"; color: ThemeManager.textColor; font.pixelSize: 11 }
                                 }
                             }
-
-                            Rectangle {
-                                width: 90; height: 90
-                                radius: ThemeManager.borderRadius
-                                color: "transparent"
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 4
-                                    Rectangle { width: 36; height: 36; radius: 6; color: "#ffffff15"; anchors.horizontalCenter: parent.horizontalCenter }
-                                    Text { text: "Dolphin"; color: ThemeManager.textColor; font.pixelSize: 11 }
-                                }
-                            }
                         }
                     }
                 }
 
                 Button {
                     Layout.fillWidth: true
-                    height: 40
-                    text: "⚡ Apply Theme & Toggle Launcher"
+                    height: 36
+                    text: "Apply & Save Theme"
                     onClicked: {
                         ThemeManager.saveTheme()
                     }

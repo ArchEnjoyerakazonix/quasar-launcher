@@ -1,22 +1,23 @@
 #include <QGuiApplication>
+#include <QCoreApplication>
 #include <QQmlApplicationEngine>
 #include <QDBusConnection>
 #include <QDBusInterface>
+#include <QDBusMessage>
 #include <QDBusConnectionInterface>
 #include <QCommandLineParser>
 #include <QWindow>
 #include <LayerShellQt/window.h>
 #include <LayerShellQt/shell.h>
-#include <QTimer>
+#include <QIcon>
+#include <QQuickImageProvider>
+#include <QPixmap>
 
 #include "frecencyranker.h"
 #include "appindexer.h"
 #include "fuzzymatcher.h"
 #include "thememanager.h"
-
-#include <QIcon>
-#include <QQuickImageProvider>
-#include <QPixmap>
+#include "launchercontroller.h"
 
 class IconProvider : public QQuickImageProvider
 {
@@ -33,7 +34,7 @@ public:
         
         QIcon icon = QIcon::fromTheme(id);
         if (icon.isNull()) {
-            return QPixmap(width, height); // Return empty pixmap
+            return QPixmap(width, height);
         }
         return icon.pixmap(width, height);
     }
@@ -41,6 +42,23 @@ public:
 
 int main(int argc, char *argv[])
 {
+    const QString dbusServiceName = "com.nexus.launcher";
+
+    {
+        QCoreApplication checkApp(argc, argv);
+        if (QDBusConnection::sessionBus().interface()->isServiceRegistered(dbusServiceName)) {
+            for (int i = 1; i < argc; ++i) {
+                if (QString(argv[i]) == "--toggle" || QString(argv[i]) == "-t") {
+                    QDBusMessage msg = QDBusMessage::createMethodCall(dbusServiceName, "/Main", "com.nexus.launcher", "toggle");
+                    QDBusConnection::sessionBus().send(msg);
+                    QCoreApplication::processEvents();
+                    break;
+                }
+            }
+            return 0;
+        }
+    }
+
     QGuiApplication app(argc, argv);
     app.setApplicationName("nexus-launcher");
     app.setOrganizationName("com.nexus");
@@ -50,18 +68,10 @@ int main(int argc, char *argv[])
     parser.addOption(toggleOption);
     parser.process(app);
 
-    const QString dbusServiceName = "com.nexus.launcher";
-
-    // Handle single instance and toggle
-    if (QDBusConnection::sessionBus().interface()->isServiceRegistered(dbusServiceName)) {
-        if (parser.isSet(toggleOption)) {
-            QDBusInterface iface(dbusServiceName, "/Main", "com.nexus.launcher");
-            iface.call("toggleVisibility");
-        }
-        return 0;
-    }
-
     QDBusConnection::sessionBus().registerService(dbusServiceName);
+
+    LauncherController controller;
+    QDBusConnection::sessionBus().registerObject("/Main", "com.nexus.launcher", &controller, QDBusConnection::ExportAllSlots);
 
     AppIndexer *appIndexer = new AppIndexer(&app);
     FuzzyMatcher *fuzzyMatcher = new FuzzyMatcher(&app);
@@ -74,22 +84,20 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
     engine.addImageProvider(QLatin1String("icon"), new IconProvider);
+
+    QWindow *rootWindow = nullptr;
+
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-                     &app, [](QObject *obj, const QUrl &objUrl) {
+                     &app, [&rootWindow](QObject *obj, const QUrl &objUrl) {
         if (!obj)
             QCoreApplication::exit(-1);
             
-        // Configure LayerShellQt on the root window
-        QWindow *window = qobject_cast<QWindow *>(obj);
-        if (window) {
-            LayerShellQt::Window *lsWindow = LayerShellQt::Window::get(window);
+        rootWindow = qobject_cast<QWindow *>(obj);
+        if (rootWindow) {
+            LayerShellQt::Window *lsWindow = LayerShellQt::Window::get(rootWindow);
             if (lsWindow) {
                 lsWindow->setLayer(LayerShellQt::Window::LayerOverlay);
-                lsWindow->setAnchors(LayerShellQt::Window::Anchors(
-                                     LayerShellQt::Window::AnchorLeft | 
-                                     LayerShellQt::Window::AnchorRight | 
-                                     LayerShellQt::Window::AnchorTop | 
-                                     LayerShellQt::Window::AnchorBottom));
+                lsWindow->setAnchors(LayerShellQt::Window::Anchors()); // Centered, no edge anchors
                 lsWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
                 lsWindow->setExclusiveZone(-1);
                 lsWindow->setScope(QStringLiteral("nexus-launcher"));
@@ -99,14 +107,23 @@ int main(int argc, char *argv[])
 
     const QUrl url(QStringLiteral("qrc:/com/nexus/launcher/qml/Main.qml"));
     engine.load(url);
-    
-    QObject *rootObject = engine.rootObjects().isEmpty() ? nullptr : engine.rootObjects().first();
-    if (rootObject) {
-        QDBusConnection::sessionBus().registerObject("/Main", rootObject, QDBusConnection::ExportScriptableSlots | QDBusConnection::ExportScriptableInvokables);
-        
-        if (parser.isSet(toggleOption)) {
-            QMetaObject::invokeMethod(rootObject, "toggleVisibility");
+
+    auto doToggle = [&rootWindow]() {
+        if (!rootWindow) return;
+        if (rootWindow->isVisible()) {
+            rootWindow->hide();
+        } else {
+            rootWindow->show();
+            rootWindow->requestActivate();
+            QMetaObject::invokeMethod(rootWindow, "onOpened");
         }
+    };
+
+    QObject::connect(&controller, &LauncherController::toggleRequested, &app, doToggle);
+
+    // Initial show if run directly without --toggle
+    if (!parser.isSet(toggleOption)) {
+        QTimer::singleShot(100, doToggle);
     }
 
     return app.exec();
