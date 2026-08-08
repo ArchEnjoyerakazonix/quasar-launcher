@@ -45,7 +45,10 @@ Item {
 
             Text {
                 id: appName
-                text: model.name || ""
+                text: (mouseArea.containsMouse || isCurrentItem) ? 
+                    (model.name || "") : 
+                    (model.highlightedName || model.name || "")
+                textFormat: Text.StyledText
                 color: (mouseArea.containsMouse || isCurrentItem) ? 
                     "#ffffff" : 
                     (typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4")
@@ -53,7 +56,7 @@ Item {
                 font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
                 font.bold: isCurrentItem
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - (appIcon.visible ? appIcon.width + parent.spacing : 0) - (commentText.visible ? commentText.width + parent.spacing : 0)
+                width: parent.width - (appIcon.visible ? appIcon.width + parent.spacing : 0) - (actionBadge.visible ? actionBadge.width + parent.spacing + 20 : 0) - (commentText.visible ? commentText.width + parent.spacing : 0)
                 elide: Text.ElideRight
             }
 
@@ -66,8 +69,30 @@ Item {
                 font.pixelSize: (typeof ThemeManager !== "undefined" ? ThemeManager.fontSize : 14) - 2
                 font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
                 anchors.verticalCenter: parent.verticalCenter
-                visible: text.length > 0 && parent.width > 350
+                visible: text.length > 0 && parent.width > 380
                 elide: Text.ElideRight
+            }
+        }
+
+        // Action badge on right for current item (like "Open" / "↵ Launch")
+        Rectangle {
+            id: actionBadge
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            height: 22
+            width: actionText.width + 16
+            radius: 4
+            color: "#ffffff25"
+            visible: isCurrentItem
+
+            Text {
+                id: actionText
+                anchors.centerIn: parent
+                text: "Open ↵"
+                color: "#ffffff"
+                font.pixelSize: 11
+                font.bold: true
             }
         }
 

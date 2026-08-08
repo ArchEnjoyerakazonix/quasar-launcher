@@ -3,6 +3,7 @@
 #include <array>
 #include <functional>
 #include <algorithm>
+#include <QRegularExpression>
 
 FuzzyMatcher::FuzzyMatcher(QObject *parent)
     : QSortFilterProxyModel(parent)
@@ -107,35 +108,98 @@ int FuzzyMatcher::score(int sourceRow) const {
     
     QModelIndex idx = sourceModel()->index(sourceRow, 0);
     
-    int maxScore = 0;
-    
-    if (m_nameRole != -1) {
-        QString name = idx.data(m_nameRole).toString();
-        int s = calculateScore(name, m_query);
-        if (s > 0) s += 50;
-        maxScore = std::max(maxScore, s);
+    QString name = m_nameRole != -1 ? idx.data(m_nameRole).toString() : QString();
+    QString genericName = m_genericNameRole != -1 ? idx.data(m_genericNameRole).toString() : QString();
+    QString comment = m_commentRole != -1 ? idx.data(m_commentRole).toString() : QString();
+
+    if (name.isEmpty() && genericName.isEmpty()) {
+        m_scoreCache[sourceRow] = 0;
+        return 0;
+    }
+
+    QString qLower = m_query.toLower();
+    QString nLower = name.toLower();
+
+    int finalScore = 0;
+
+    // 1. Direct Name Prefix Match (HIGHEST PRIORITY: 100,000+)
+    if (nLower.startsWith(qLower)) {
+        finalScore = 100000 + (1000 - name.length());
+    }
+    // 2. Word Boundary Prefix Match in Name (e.g. "Theme Selector" matches "Sel" -> 50,000+)
+    else {
+        QStringList words = nLower.split(QRegularExpression("[\\s\\-_]+"));
+        bool wordMatch = false;
+        for (int i = 1; i < words.size(); ++i) {
+            if (words[i].startsWith(qLower)) {
+                finalScore = 50000 + (1000 - name.length()) - (i * 10);
+                wordMatch = true;
+                break;
+            }
+        }
+        
+        if (!wordMatch) {
+            // 3. Exact Substring Match in Name (e.g. "Chromium" for "ro" -> 10,000+)
+            int pos = nLower.indexOf(qLower);
+            if (pos != -1) {
+                finalScore = 10000 + (1000 - pos * 10 - name.length());
+            }
+            // 4. Prefix Match in GenericName or Comment (5,000+)
+            else if (genericName.toLower().startsWith(qLower) || comment.toLower().startsWith(qLower)) {
+                finalScore = 5000;
+            }
+            // 5. Substring Match in GenericName or Comment (2,000+)
+            else if (genericName.toLower().contains(qLower) || comment.toLower().contains(qLower)) {
+                finalScore = 2000;
+            }
+            // 6. Subsequence Fuzzy Match
+            else {
+                int s = calculateScore(name, m_query);
+                if (s > 0) finalScore = s;
+            }
+        }
     }
     
-    if (m_genericNameRole != -1) {
-        maxScore = std::max(maxScore, calculateScore(idx.data(m_genericNameRole).toString(), m_query));
+    m_scoreCache[sourceRow] = finalScore;
+    return finalScore;
+}
+
+QString FuzzyMatcher::formatHighlightedName(const QString &name, const QString &query) const {
+    if (query.isEmpty()) return name;
+
+    QString qLower = query.toLower();
+    QString nLower = name.toLower();
+
+    int pos = nLower.indexOf(qLower);
+    if (pos != -1) {
+        QString before = name.left(pos);
+        QString matched = name.mid(pos, query.length());
+        QString after = name.mid(pos + query.length());
+        return QString("%1<u><font color=\"#8aadf4\">%2</font></u>%3").arg(before, matched, after);
     }
-    if (m_commentRole != -1) {
-        maxScore = std::max(maxScore, calculateScore(idx.data(m_commentRole).toString(), m_query));
+
+    QString result;
+    int qIdx = 0;
+    int qLen = query.length();
+    for (int i = 0; i < name.length(); ++i) {
+        if (qIdx < qLen && name[i].toLower() == query[qIdx].toLower()) {
+            result += QString("<u><font color=\"#8aadf4\">%1</font></u>").arg(name[i]);
+            qIdx++;
+        } else {
+            result += name[i];
+        }
     }
-    if (m_categoriesRole != -1) {
-        maxScore = std::max(maxScore, calculateScore(idx.data(m_categoriesRole).toString(), m_query));
-    }
-    if (m_keywordsRole != -1) {
-        maxScore = std::max(maxScore, calculateScore(idx.data(m_keywordsRole).toString(), m_query));
-    }
-    
-    m_scoreCache[sourceRow] = maxScore;
-    return maxScore;
+    return result;
 }
 
 QVariant FuzzyMatcher::data(const QModelIndex &index, int role) const {
     if (role == ScoreRole) {
         return score(index.row());
+    }
+    if (role == HighlightedNameRole) {
+        QModelIndex sourceIdx = mapToSource(index);
+        QString name = sourceModel()->data(sourceIdx, m_nameRole).toString();
+        return formatHighlightedName(name, m_query);
     }
     return QSortFilterProxyModel::data(index, role);
 }
@@ -143,6 +207,7 @@ QVariant FuzzyMatcher::data(const QModelIndex &index, int role) const {
 QHash<int, QByteArray> FuzzyMatcher::roleNames() const {
     QHash<int, QByteArray> roles = QSortFilterProxyModel::roleNames();
     roles[ScoreRole] = "score";
+    roles[HighlightedNameRole] = "highlightedName";
     return roles;
 }
 
@@ -163,8 +228,6 @@ bool FuzzyMatcher::lessThan(const QModelIndex &source_left, const QModelIndex &s
     int scoreR = score(source_right.row());
     
     if (scoreL != scoreR) {
-        // We want highest score first. Since sort() is called with Qt::AscendingOrder,
-        // returning true means left appears BEFORE right.
         return scoreL > scoreR;
     }
     

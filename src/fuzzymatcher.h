@@ -19,7 +19,8 @@ public:
     void setSourceModel(QAbstractItemModel *sourceModel) override;
     
     enum CustomRoles {
-        ScoreRole = Qt::UserRole + 150
+        ScoreRole = Qt::UserRole + 150,
+        HighlightedNameRole = Qt::UserRole + 151
     };
 
     QVariant data(const QModelIndex &index, int role) const override;
@@ -46,4 +47,5 @@ private:
     void updateRoleKeys();
     int score(int sourceRow) const;
     int calculateScore(const QString &textStr, const QString &patternStr) const;
+    QString formatHighlightedName(const QString &name, const QString &query) const;
 };
