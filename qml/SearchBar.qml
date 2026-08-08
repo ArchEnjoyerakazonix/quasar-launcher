@@ -6,47 +6,57 @@ Rectangle {
     property alias text: textInput.text
     property bool isFocused: textInput.activeFocus
 
-    width: textInput.text.length > 0 ? 720 : 680
-    height: 56
-    radius: 16
+    width: parent ? parent.width - 32 : 600
+    height: (typeof ThemeManager !== "undefined" ? ThemeManager.fontSize : 14) * 2 + 16
+    radius: typeof ThemeManager !== "undefined" ? ThemeManager.borderRadius : 10
 
-    color: Qt.rgba(255/255, 255/255, 255/255, 0.08)
-    border.color: isFocused ? "#7C3AED" : Qt.rgba(255/255, 255/255, 255/255, 0.12)
-    border.width: isFocused ? 2 : 1
-
-    Behavior on width {
-        SpringAnimation { spring: 3; damping: 0.2; epsilon: 0.25 }
-    }
+    color: Qt.alpha(
+        typeof ThemeManager !== "undefined" ? ThemeManager.cardColor : "#1e1e2e",
+        typeof ThemeManager !== "undefined" ? ThemeManager.cardOpacity : 0.9
+    )
+    border.color: isFocused ? 
+        (typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa") : 
+        (typeof ThemeManager !== "undefined" ? ThemeManager.borderColor : "#313244")
+    border.width: typeof ThemeManager !== "undefined" ? ThemeManager.borderWidth : 1
 
     Behavior on border.color {
-        ColorAnimation { duration: 200; easing.type: Easing.OutQuint }
+        ColorAnimation { duration: 150 }
     }
 
     Row {
         anchors.fill: parent
-        anchors.leftMargin: 20
-        anchors.rightMargin: 20
-        spacing: 12
+        anchors.leftMargin: 14
+        anchors.rightMargin: 14
+        spacing: 8
 
         Text {
-            text: "🔍"
-            font.pixelSize: 20
-            color: Qt.rgba(255/255, 255/255, 255/255, 0.6)
+            id: promptLabel
+            text: typeof ThemeManager !== "undefined" ? ThemeManager.promptText : ""
+            font.pixelSize: typeof ThemeManager !== "undefined" ? ThemeManager.fontSize + 1 : 15
+            font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
+            font.bold: true
+            color: typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa"
             anchors.verticalCenter: parent.verticalCenter
+            visible: text.length > 0
         }
 
         TextInput {
             id: textInput
             anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - 40 - 12
-            font.pixelSize: 18
-            color: "white"
+            width: parent.width - (promptLabel.visible ? promptLabel.width + parent.spacing : 0)
+            font.pixelSize: typeof ThemeManager !== "undefined" ? ThemeManager.fontSize + 1 : 15
+            font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
+            color: typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4"
             clip: true
 
             Text {
-                text: "Search applications..."
-                color: Qt.rgba(255/255, 255/255, 255/255, 0.4)
-                font.pixelSize: 18
+                text: "Type to filter..."
+                color: Qt.alpha(
+                    typeof ThemeManager !== "undefined" ? ThemeManager.secondaryTextColor : "#a6adc8",
+                    0.5
+                )
+                font.pixelSize: textInput.font.pixelSize
+                font.family: textInput.font.family
                 visible: !textInput.text
                 anchors.verticalCenter: parent.verticalCenter
             }

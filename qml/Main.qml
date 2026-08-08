@@ -7,7 +7,6 @@ Window {
     color: "transparent"
     flags: Qt.FramelessWindowHint
 
-    // Full-screen overlay (can be adjusted for LayerShell)
     width: Screen.width
     height: Screen.height
 
@@ -19,7 +18,6 @@ Window {
             contentItemOpacity = 1.0
             searchBar.forceActiveFocus()
             
-            // Reset search query
             if (typeof fuzzyMatcher !== "undefined") {
                 fuzzyMatcher.query = ""
                 searchBar.text = ""
@@ -28,10 +26,6 @@ Window {
     }
 
     property real contentItemOpacity: 0.0
-
-    Component.onCompleted: {
-        // Initial setup if needed
-    }
 
     // Press Escape to hide the window
     Shortcut {
@@ -50,44 +44,82 @@ Window {
         opacity: root.contentItemOpacity
         
         Behavior on opacity {
-            NumberAnimation { duration: 200; easing.type: Easing.OutQuint }
+            NumberAnimation { duration: 150; easing.type: Easing.OutQuint }
         }
 
-        SearchBar {
-            id: searchBar
-            anchors.top: parent.top
-            anchors.topMargin: 60
-            anchors.horizontalCenter: parent.horizontalCenter
+        // Launcher Window Box (Rofi Box)
+        Rectangle {
+            id: launcherBox
+            width: typeof ThemeManager !== "undefined" ? ThemeManager.windowWidth : 640
+            height: typeof ThemeManager !== "undefined" ? ThemeManager.windowHeight : 420
+            anchors.centerIn: parent
+            radius: typeof ThemeManager !== "undefined" ? ThemeManager.borderRadius : 12
 
-            onTextChanged: {
-                if (typeof fuzzyMatcher !== "undefined") {
-                    fuzzyMatcher.query = text
-                }
-            }
-            
-            Keys.onDownPressed: {
-                appGrid.forceActiveFocus()
-            }
-        }
+            color: Qt.alpha(
+                typeof ThemeManager !== "undefined" ? ThemeManager.backgroundColor : "#11111b",
+                typeof ThemeManager !== "undefined" ? ThemeManager.bgOpacity : 0.90
+            )
+            border.color: typeof ThemeManager !== "undefined" ? ThemeManager.borderColor : "#313244"
+            border.width: typeof ThemeManager !== "undefined" ? ThemeManager.borderWidth : 1
 
-        AppGrid {
-            id: appGrid
-            anchors.top: searchBar.bottom
-            anchors.topMargin: 24
-            anchors.horizontalCenter: parent.horizontalCenter
+            Column {
+                anchors.fill: parent
+                anchors.margins: 14
+                spacing: 12
 
-            // Max height logic
-            height: Math.min(parent.height - searchBar.height - 120, contentItem.childrenRect.height)
-            
-            onLaunchApp: function(appExec, appId) {
-                if (typeof appIndexer !== "undefined") {
-                    appIndexer.launch(appExec)
+                SearchBar {
+                    id: searchBar
+                    width: parent.width
+
+                    onTextChanged: {
+                        if (typeof fuzzyMatcher !== "undefined") {
+                            fuzzyMatcher.query = text
+                        }
+                    }
+                    
+                    Keys.onDownPressed: {
+                        if (appList.visible) appList.forceActiveFocus()
+                        else if (appGrid.visible) appGrid.forceActiveFocus()
+                    }
                 }
-                if (typeof frecencyRanker !== "undefined") {
-                    frecencyRanker.recordLaunch(appId)
+
+                // Vertical Rofi-style List View
+                AppList {
+                    id: appList
+                    width: parent.width
+                    height: parent.height - searchBar.height - parent.spacing
+                    visible: typeof ThemeManager === "undefined" || ThemeManager.layoutMode === "list"
+
+                    onLaunchApp: function(appExec, appId) {
+                        if (typeof appIndexer !== "undefined") {
+                            appIndexer.launch(appExec)
+                        }
+                        if (typeof frecencyRanker !== "undefined") {
+                            frecencyRanker.recordLaunch(appId)
+                        }
+                        root.contentItemOpacity = 0.0
+                        Qt.callLater(function() { root.hide() })
+                    }
                 }
-                root.contentItemOpacity = 0.0
-                Qt.callLater(function() { root.hide() })
+
+                // Spotlight Grid View
+                AppGrid {
+                    id: appGrid
+                    width: parent.width
+                    height: parent.height - searchBar.height - parent.spacing
+                    visible: typeof ThemeManager !== "undefined" && ThemeManager.layoutMode === "grid"
+
+                    onLaunchApp: function(appExec, appId) {
+                        if (typeof appIndexer !== "undefined") {
+                            appIndexer.launch(appExec)
+                        }
+                        if (typeof frecencyRanker !== "undefined") {
+                            frecencyRanker.recordLaunch(appId)
+                        }
+                        root.contentItemOpacity = 0.0
+                        Qt.callLater(function() { root.hide() })
+                    }
+                }
             }
         }
     }

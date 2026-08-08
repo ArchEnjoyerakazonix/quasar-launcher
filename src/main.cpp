@@ -12,6 +12,7 @@
 #include "frecencyranker.h"
 #include "appindexer.h"
 #include "fuzzymatcher.h"
+#include "thememanager.h"
 
 #include <QIcon>
 #include <QQuickImageProvider>
@@ -69,6 +70,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("Nexus", 1, 0, "FrecencyRanker", FrecencyRanker::instance());
     qmlRegisterSingletonInstance("Nexus", 1, 0, "AppIndexer", appIndexer);
     qmlRegisterSingletonInstance("Nexus", 1, 0, "FuzzyMatcher", fuzzyMatcher);
+    qmlRegisterSingletonInstance("Nexus", 1, 0, "ThemeManager", ThemeManager::instance());
 
     QQmlApplicationEngine engine;
     engine.addImageProvider(QLatin1String("icon"), new IconProvider);
@@ -95,7 +97,8 @@ int main(int argc, char *argv[])
         }
     }, Qt::QueuedConnection);
 
-    engine.loadFromModule("com.nexus.launcher", "Main");
+    const QUrl url(QStringLiteral("qrc:/com/nexus/launcher/qml/Main.qml"));
+    engine.load(url);
     
     QObject *rootObject = engine.rootObjects().isEmpty() ? nullptr : engine.rootObjects().first();
     if (rootObject) {
@@ -103,11 +106,6 @@ int main(int argc, char *argv[])
         
         if (parser.isSet(toggleOption)) {
             QMetaObject::invokeMethod(rootObject, "toggleVisibility");
-        } else {
-            if (QWindow *window = qobject_cast<QWindow *>(rootObject)) {
-                window->showFullScreen();
-                QMetaObject::invokeMethod(rootObject, "toggleVisibility"); // To trigger animation and focus
-            }
         }
     }
 
