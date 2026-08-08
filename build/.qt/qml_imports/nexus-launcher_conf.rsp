@@ -1,0 +1,14 @@
+-rootPath
+/home/archuser/Projects/nexus-launcher
+-cmake-output
+-output-file
+/home/archuser/Projects/nexus-launcher/build/.qt/qml_imports/nexus-launcher_conf.cmake
+-importPath
+/home/archuser/Projects/nexus-launcher/build
+-importPath
+/home/archuser/Projects/nexus-launcher/build/com/nexus/launcher
+-importPath
+/usr/lib/qt6/qml
+-qrcFiles
+/home/archuser/Projects/nexus-launcher/build/.qt/rcc/qmake_com_nexus_launcher.qrc
+/home/archuser/Projects/nexus-launcher/build/.qt/rcc/nexus-launcher_raw_qml_0.qrc

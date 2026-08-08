@@ -1,0 +1,47 @@
+{
+    "classes": [
+        {
+            "className": "FuzzyMatcher",
+            "lineNumber": 8,
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 10,
+                    "name": "query",
+                    "notify": "queryChanged",
+                    "override": false,
+                    "read": "query",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false,
+                    "write": "setQuery"
+                }
+            ],
+            "qualifiedClassName": "FuzzyMatcher",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 29,
+                    "name": "queryChanged",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QSortFilterProxyModel"
+                }
+            ]
+        }
+    ],
+    "inputFile": "fuzzymatcher.h",
+    "outputRevision": 69
+}

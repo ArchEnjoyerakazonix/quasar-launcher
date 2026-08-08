@@ -1,0 +1,10 @@
+module com.nexus.launcher
+typeinfo nexus-launcher.qmltypes
+prefer :/com/nexus/launcher/
+Main 1.0 qml/Main.qml
+SearchBar 1.0 qml/SearchBar.qml
+AppGrid 1.0 qml/AppGrid.qml
+AppDelegate 1.0 qml/AppDelegate.qml
+GlassBackground 1.0 qml/GlassBackground.qml
+depends QtQuick
+

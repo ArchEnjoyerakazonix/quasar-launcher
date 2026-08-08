@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias="/com/nexus/launcher">/home/archuser/Projects/nexus-launcher/build/com/nexus/launcher</file>
+
+  </qresource>
+</RCC>

@@ -1,0 +1,30 @@
+{
+    "classes": [
+        {
+            "className": "AppIndexer",
+            "lineNumber": 18,
+            "object": true,
+            "qualifiedClassName": "AppIndexer",
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        },
+        {
+            "className": "FuzzyMatcher",
+            "lineNumber": 24,
+            "object": true,
+            "qualifiedClassName": "FuzzyMatcher",
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "main.cpp",
+    "outputRevision": 69
+}

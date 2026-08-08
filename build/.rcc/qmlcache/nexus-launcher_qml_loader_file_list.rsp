@@ -1,0 +1,9 @@
+--resource
+/home/archuser/Projects/nexus-launcher/build/.qt/rcc/qmake_com_nexus_launcher.qrc
+--resource
+/home/archuser/Projects/nexus-launcher/build/.qt/rcc/nexus-launcher_raw_qml_0.qrc
+/com/nexus/launcher/qml/Main.qml
+/com/nexus/launcher/qml/SearchBar.qml
+/com/nexus/launcher/qml/AppGrid.qml
+/com/nexus/launcher/qml/AppDelegate.qml
+/com/nexus/launcher/qml/GlassBackground.qml

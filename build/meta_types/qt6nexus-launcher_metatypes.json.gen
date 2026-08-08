@@ -1,0 +1,208 @@
+[
+    {
+        "classes": [
+            {
+                "className": "AppIndexer",
+                "lineNumber": 23,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "exec",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 46,
+                        "name": "launch",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 4,
+                        "lineNumber": 47,
+                        "name": "refresh",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 25,
+                        "name": "filteredCount",
+                        "notify": "filteredCountChanged",
+                        "override": false,
+                        "read": "filteredCount",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "AppIndexer",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 52,
+                        "name": "filteredCountChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "private",
+                        "index": 1,
+                        "lineNumber": 55,
+                        "name": "onFilesChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "index": 2,
+                        "lineNumber": 56,
+                        "name": "onScanFinished",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QAbstractListModel"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "appindexer.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "FrecencyRanker",
+                "lineNumber": 9,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "appId",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 17,
+                        "name": "recordLaunch",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "appId",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 2,
+                        "isConst": true,
+                        "lineNumber": 18,
+                        "name": "getScore",
+                        "returnType": "double"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 12,
+                        "name": "totalLaunches",
+                        "notify": "totalLaunchesChanged",
+                        "override": false,
+                        "read": "totalLaunches",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "FrecencyRanker",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 23,
+                        "name": "totalLaunchesChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "frecencyranker.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "FuzzyMatcher",
+                "lineNumber": 8,
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 10,
+                        "name": "query",
+                        "notify": "queryChanged",
+                        "override": false,
+                        "read": "query",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setQuery"
+                    }
+                ],
+                "qualifiedClassName": "FuzzyMatcher",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 29,
+                        "name": "queryChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QSortFilterProxyModel"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "fuzzymatcher.h",
+        "outputRevision": 69
+    }
+]
