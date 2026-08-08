@@ -1,6 +1,0 @@
-<RCC>
-  <qresource prefix="/com/nexus/launcher">
-    <file alias="qmldir">/home/archuser/Projects/nexus-launcher/build/com/nexus/launcher/qmldir</file>
-  </qresource>
-</RCC>
-

@@ -1,3 +1,0 @@
-/home/archuser/Projects/nexus-launcher/build/nexus-launcher_autogen/include/../UVLADIE3JM/moc_appindexer.cpp.json
-/home/archuser/Projects/nexus-launcher/build/nexus-launcher_autogen/include/../UVLADIE3JM/moc_frecencyranker.cpp.json
-/home/archuser/Projects/nexus-launcher/build/nexus-launcher_autogen/include/../UVLADIE3JM/moc_fuzzymatcher.cpp.json

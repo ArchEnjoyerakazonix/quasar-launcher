@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/archuser/Projects/nexus-launcher/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
