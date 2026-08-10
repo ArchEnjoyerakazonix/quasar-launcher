@@ -6,12 +6,12 @@ import Quasar 1.0
 
 Window {
     id: window
-    width: 1080
-    height: 720
+    width: 980
+    height: 640
     visible: true
     title: "Quasar Theme Studio & Customizer"
     color: "#11111b"
-    flags: Qt.Window
+    flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowSystemMenuHint
 
     Shortcut {
         sequence: "Escape"

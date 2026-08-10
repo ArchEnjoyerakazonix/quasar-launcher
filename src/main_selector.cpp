@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
     app.setApplicationName("quasar-theme-selector");
+    app.setDesktopFileName("quasar-theme-selector");
     app.setOrganizationName("com.quasar");
 
     QQmlApplicationEngine engine;
