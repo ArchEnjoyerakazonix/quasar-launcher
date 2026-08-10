@@ -160,15 +160,27 @@ Item {
         Connections {
             target: typeof fuzzyMatcher !== "undefined" ? fuzzyMatcher : null
             function onQueryChanged() {
-                root.extraSelectionIndex = -1
-                if (list.count > 0) {
-                    list.currentIndex = 0
+                var q = root.query.trim().toLowerCase()
+                if (q.startsWith("?") || q.startsWith("g:") || q.startsWith("web:")) {
+                    root.extraSelectionIndex = 1
+                } else if (q.startsWith("$")) {
+                    root.extraSelectionIndex = 0
+                } else {
+                    root.extraSelectionIndex = -1
+                    if (list.count > 0) {
+                        list.currentIndex = 0
+                    }
                 }
             }
         }
 
         function handleReturn() {
-            if (root.isWindowMode && list.count > 0 && list.currentIndex >= 0) {
+            var q = root.query.trim()
+            if (root.extraSelectionIndex === 1 || q.startsWith("?") || q.startsWith("g:") || q.startsWith("web:")) {
+                root.launchApp("__web__:" + q, "")
+            } else if (root.extraSelectionIndex === 0 || q.startsWith("$")) {
+                root.launchApp("__shell__:" + q, "")
+            } else if (root.isWindowMode && list.count > 0 && list.currentIndex >= 0) {
                 var itemData = list.model[list.currentIndex]
                 if (itemData && itemData.address) {
                     if (typeof WindowSwitcher !== "undefined") {
@@ -176,14 +188,10 @@ Item {
                     }
                     root.launchApp("__focus__", itemData.address)
                 }
-            } else if (root.extraSelectionIndex === 1) {
-                root.launchApp("__web__:" + root.query, "")
-            } else if (root.extraSelectionIndex === 0) {
-                root.launchApp("__shell__:" + root.query, "")
-            } else if (list.currentItem && typeof list.currentItem.activate === "function") {
+            } else if (list.count > 0 && list.currentIndex >= 0 && list.currentItem && typeof list.currentItem.activate === "function") {
                 list.currentItem.activate()
-            } else if (root.query.length > 0) {
-                root.launchApp(root.query, "")
+            } else if (q.length > 0) {
+                root.launchApp("__web__:" + q, "")
             }
         }
 

@@ -105,9 +105,13 @@ void AppIndexer::launch(const QString& execStr)
     if (exec.startsWith("__web__:") || exec == "__web__") {
         QString query = exec.startsWith("__web__:") ? exec.mid(8).trimmed() : QString();
         if (query.startsWith("?")) query = query.mid(1).trimmed();
+        if (query.startsWith("g:")) query = query.mid(2).trimmed();
+        if (query.startsWith("web:")) query = query.mid(4).trimmed();
         if (query.isEmpty()) return;
-        QString searchUrl = "https://www.google.com/search?q=" + QString::fromUtf8(QUrl::toPercentEncoding(query));
-        QDesktopServices::openUrl(QUrl(searchUrl));
+
+        QString encoded = QString::fromUtf8(QUrl::toPercentEncoding(query.toUtf8()));
+        QString searchUrl = "https://www.google.com/search?q=" + encoded;
+        QProcess::startDetached("xdg-open", QStringList() << searchUrl);
         return;
     }
 
