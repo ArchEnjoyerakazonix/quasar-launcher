@@ -155,68 +155,81 @@ static int matchSingleQuery(const QString &name, const QString &genericName, con
     QString gLower = genericName.toLower();
     QString cLower = comment.toLower();
 
-    int finalScore = 0;
+    int qLen = qLower.length();
+    int nLen = nLower.length();
 
     // 1. Direct Name Prefix Match (HIGHEST PRIORITY: 100,000+)
     if (nLower.startsWith(qLower)) {
-        finalScore = 100000 + (1000 - name.length());
+        return 100000 + (1000 - nLen);
     }
-    // 2. Word Boundary Prefix Match in Name
-    else {
-        QStringList words = nLower.split(QRegularExpression("[\\s\\-_]+"));
-        bool wordMatch = false;
-        for (int i = 1; i < words.size(); ++i) {
-            if (words[i].startsWith(qLower)) {
-                finalScore = 50000 + (1000 - name.length()) - (i * 10);
-                wordMatch = true;
-                break;
-            }
-        }
-        
-        if (!wordMatch) {
-            // 3. Exact Substring Match in Name
-            int pos = nLower.indexOf(qLower);
-            if (pos != -1) {
-                finalScore = 10000 + (1000 - pos * 10 - name.length());
-            }
-            // 4. Prefix Match in GenericName or Comment
-            else if (gLower.startsWith(qLower) || cLower.startsWith(qLower)) {
-                finalScore = 5000;
-            }
-            // 5. Substring Match in GenericName or Comment
-            else if (gLower.contains(qLower) || cLower.contains(qLower)) {
-                finalScore = 2000;
-            }
-            // 6. Subsequence Fuzzy Match
-            else {
-                int qIdx = 0;
-                int qLen = qLower.length();
-                for (int i = 0; i < nLower.length() && qIdx < qLen; ++i) {
-                    if (nLower[i] == qLower[qIdx]) {
-                        qIdx++;
-                    }
-                }
-                if (qIdx == qLen) {
-                    finalScore = 1000 + (100 - name.length());
-                } else {
-                    // 7. Soft Character Overlap Match (Sloppy match like dotfiles Levendist/Fuzzy)
-                    int matchedCount = 0;
-                    QString nTemp = nLower;
-                    for (int i = 0; i < qLen; ++i) {
-                        int pos = nTemp.indexOf(qLower[i]);
-                        if (pos != -1) {
-                            matchedCount++;
-                            nTemp.remove(pos, 1);
-                        }
-                    }
-                    if (matchedCount >= 1 && (matchedCount >= qLen / 2 || qLen <= 2)) {
-                        finalScore = 100 + (matchedCount * 20) - name.length();
-                    }
-                }
-            }
+
+    // 2. Word Boundary Prefix Match in Name (e.g. "Theme Selector" for "Sel" -> 80,000+)
+    QStringList words = nLower.split(QRegularExpression("[\\s\\-_]+"));
+    for (int i = 1; i < words.size(); ++i) {
+        if (words[i].startsWith(qLower)) {
+            return 80000 + (1000 - nLen) - (i * 10);
         }
     }
-    return finalScore;
+
+    // 3. Exact Substring Match in Name (e.g. "Chromium" for "ro" -> 50,000+)
+    int subPos = nLower.indexOf(qLower);
+    if (subPos != -1) {
+        return 50000 + (1000 - subPos * 10 - nLen);
+    }
+
+    // 4. Character Overlap Score (Levenshtein / Edit Distance)
+    int matchedCount = 0;
+    QString nTemp = nLower;
+    for (int i = 0; i < qLen; ++i) {
+        int pos = nTemp.indexOf(qLower[i]);
+        if (pos != -1) {
+            matchedCount++;
+            nTemp.remove(pos, 1);
+        }
+    }
+
+    // Calculate Subsequence Gaps
+    int qIdx = 0;
+    int firstMatch = -1;
+    int lastMatch = -1;
+    for (int i = 0; i < nLen && qIdx < qLen; ++i) {
+        if (nLower[i] == qLower[qIdx]) {
+            if (firstMatch == -1) firstMatch = i;
+            lastMatch = i;
+            qIdx++;
+        }
+    }
+
+    int score = 0;
+
+    // High similarity (e.g. "stream" vs "Steam" - 5 out of 6 chars match, edit dist 1)
+    if (matchedCount >= qLen - 1 && std::abs(nLen - qLen) <= 2) {
+        int editDistPenalty = (qLen - matchedCount) * 1000 + std::abs(nLen - qLen) * 500;
+        score = 40000 - editDistPenalty - (firstMatch > 0 ? firstMatch * 100 : 0);
+        return std::max(5000, score);
+    }
+
+    if (qIdx == qLen && firstMatch != -1) {
+        int span = lastMatch - firstMatch + 1;
+        int extraGap = span - qLen;
+        int lenDiff = std::abs(nLen - qLen);
+        // Heavy penalty for large gaps and huge length difference
+        int subseqScore = 20000 - (extraGap * 1200) - (lenDiff * 300) - (firstMatch * 200);
+        if (subseqScore > 0) return subseqScore;
+    }
+
+    if (matchedCount >= 1) {
+        int lenDiff = std::abs(nLen - qLen);
+        int unmappedChars = qLen - matchedCount;
+        int overlapScore = (10000 * matchedCount / qLen) - (lenDiff * 200) - (unmappedChars * 500);
+        if (overlapScore > 0) return overlapScore;
+    }
+
+    // 5. GenericName or Comment Prefix/Substring (1,000+)
+    if (gLower.startsWith(qLower) || cLower.startsWith(qLower)) return 1000;
+    if (gLower.contains(qLower) || cLower.contains(qLower)) return 500;
+
+    return 0;
 }
 
 int FuzzyMatcher::score(int sourceRow) const {
