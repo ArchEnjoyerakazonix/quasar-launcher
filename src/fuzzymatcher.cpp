@@ -150,12 +150,34 @@ static QString convertRuToEnMnemonic(const QString &input) {
     return result;
 }
 
+static QString convertEnToRu(const QString &input) {
+    static const QHash<QChar, QChar> enToRu = {
+        {'q', u'й'}, {'w', u'ц'}, {'e', u'у'}, {'r', u'к'}, {'t', u'е'}, {'y', u'н'}, {'u', u'г'}, {'i', u'ш'}, {'o', u'щ'}, {'p', u'з'}, {'[', u'х'}, {']', u'ъ'},
+        {'a', u'ф'}, {'s', u'ы'}, {'d', u'в'}, {'f', u'а'}, {'g', u'п'}, {'h', u'р'}, {'j', u'о'}, {'k', u'л'}, {'l', u'д'}, {';', u'ж'}, {'\'', u'э'},
+        {'z', u'я'}, {'x', u'ч'}, {'c', u'с'}, {'v', u'м'}, {'b', u'и'}, {'n', u'т'}, {'m', u'ь'}, {',', u'б'}, {'.', u'ю'},
+        {'Q', u'Й'}, {'W', u'Ц'}, {'E', u'У'}, {'R', u'К'}, {'T', u'Е'}, {'Y', u'Н'}, {'U', u'Г'}, {'I', u'Ш'}, {'O', u'Щ'}, {'P', u'З'}, {'{', u'Х'}, {'}', u'Ъ'},
+        {'A', u'Ф'}, {'S', u'Ы'}, {'D', u'В'}, {'F', u'А'}, {'G', u'П'}, {'H', u'Р'}, {'J', u'О'}, {'K', u'Л'}, {'L', u'Д'}, {':', u'Ж'}, {'"', u'Э'},
+        {'Z', u'Я'}, {'X', u'Ч'}, {'C', u'С'}, {'V', u'М'}, {'B', u'И'}, {'N', u'Т'}, {'M', u'Ь'}, {'<', u'Б'}, {'>', u'Ю'}
+    };
+
+    QString result;
+    result.reserve(input.length());
+    for (QChar c : input) {
+        if (enToRu.contains(c)) {
+            result.append(enToRu.value(c));
+        } else {
+            result.append(c);
+        }
+    }
+    return result;
+}
+
 static int boundedDamerauLevenshtein(const QString &s1, const QString &s2, int maxDist) {
     int len1 = s1.length();
     int len2 = s2.length();
     if (std::abs(len1 - len2) > maxDist) return maxDist + 1;
 
-    std::vector<int> prev(len2 + 1), curr(len2 + 1);
+    std::vector<int> prev2(len2 + 1, 0), prev(len2 + 1), curr(len2 + 1);
     for (int j = 0; j <= len2; ++j) prev[j] = j;
 
     for (int i = 1; i <= len1; ++i) {
@@ -165,12 +187,13 @@ static int boundedDamerauLevenshtein(const QString &s1, const QString &s2, int m
             int cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1;
             curr[j] = std::min({ prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost });
             if (i > 1 && j > 1 && s1[i - 1] == s2[j - 2] && s1[i - 2] == s2[j - 1]) {
-                curr[j] = std::min(curr[j], prev[j - 2] + 1);
+                curr[j] = std::min(curr[j], prev2[j - 2] + 1);
             }
             minInRow = std::min(minInRow, curr[j]);
         }
         if (minInRow > maxDist) return maxDist + 1;
-        prev = curr;
+        prev2 = prev;
+        prev  = curr;
     }
     return prev[len2];
 }
@@ -243,7 +266,7 @@ static int matchSingleQuery(const QString &name, const QString &genericName, con
         }
     }
 
-    // 7. High-Precision Damerau-Levenshtein Edit Distance (e.g. "stream" vs "Steam" - 1 insertion/typo)
+    // 7. High-Precision Damerau-Levenshtein Edit Distance (e.g. "ca" vs "ac", "stema" vs "steam")
     int maxAllowedDist = (qLen <= 4) ? 1 : 2;
     int editDist = boundedDamerauLevenshtein(qLower, nLower, maxAllowedDist);
     if (editDist <= maxAllowedDist) {
@@ -303,15 +326,19 @@ int FuzzyMatcher::score(int sourceRow) const {
     QString qwertTrans = convertRuToEn(m_query);
     int scoreQwerty = (qwertTrans != m_query) ? matchSingleQuery(name, genericName, comment, exec, keywords, qwertTrans) : 0;
 
+    QString enToRuTrans = convertEnToRu(m_query);
+    int scoreEnToRu = (enToRuTrans != m_query) ? matchSingleQuery(name, genericName, comment, exec, keywords, enToRuTrans) : 0;
+
     QString mnemonTrans = convertRuToEnMnemonic(m_query);
     int scoreMnemonic = (mnemonTrans != m_query && mnemonTrans != qwertTrans) ? matchSingleQuery(name, genericName, comment, exec, keywords, mnemonTrans) : 0;
 
-    int finalScore = std::max({scoreOrig, scoreQwerty, scoreMnemonic});
+    int finalScore = std::max({scoreOrig, scoreQwerty, scoreEnToRu, scoreMnemonic});
 
-    // Add Frecency Ranker bonus for frequently/recently launched apps
+    // Add Logarithmically Clamped Frecency Ranker bonus (max 900 points, never crosses 10,000 relevance tier boundary)
     if (finalScore > 0 && !desktopFile.isEmpty()) {
-        int frecencyScore = static_cast<int>(FrecencyRanker::instance()->getScore(desktopFile));
-        finalScore += frecencyScore * 100;
+        double rawFrecency = FrecencyRanker::instance()->getScore(desktopFile);
+        int historyBonus = std::clamp(qRound(180.0 * std::log1p(rawFrecency)), 0, 900);
+        finalScore += historyBonus;
     }
 
     m_scoreCache[sourceRow] = finalScore;

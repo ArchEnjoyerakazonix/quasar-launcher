@@ -1,5 +1,5 @@
 ================================================================
-QUASAR LAUNCHER CODEBASE REPOMIX
+QUASAR LAUNCHER CODEBASE REPOMIX (v2 AUDIT FIXES)
 ================================================================
 
 --- File: CMakeLists.txt ---
@@ -191,6 +191,7 @@ int main(int argc, char *argv[])
     const QString dbusServiceName = "com.quasar.launcher";
 
     QGuiApplication app(argc, argv);
+    LayerShellQt::Shell::useLayerShell();
     app.setApplicationName("quasar");
     app.setOrganizationName("com.quasar");
 
@@ -834,12 +835,34 @@ static QString convertRuToEnMnemonic(const QString &input) {
     return result;
 }
 
+static QString convertEnToRu(const QString &input) {
+    static const QHash<QChar, QChar> enToRu = {
+        {'q', u'й'}, {'w', u'ц'}, {'e', u'у'}, {'r', u'к'}, {'t', u'е'}, {'y', u'н'}, {'u', u'г'}, {'i', u'ш'}, {'o', u'щ'}, {'p', u'з'}, {'[', u'х'}, {']', u'ъ'},
+        {'a', u'ф'}, {'s', u'ы'}, {'d', u'в'}, {'f', u'а'}, {'g', u'п'}, {'h', u'р'}, {'j', u'о'}, {'k', u'л'}, {'l', u'д'}, {';', u'ж'}, {'\'', u'э'},
+        {'z', u'я'}, {'x', u'ч'}, {'c', u'с'}, {'v', u'м'}, {'b', u'и'}, {'n', u'т'}, {'m', u'ь'}, {',', u'б'}, {'.', u'ю'},
+        {'Q', u'Й'}, {'W', u'Ц'}, {'E', u'У'}, {'R', u'К'}, {'T', u'Е'}, {'Y', u'Н'}, {'U', u'Г'}, {'I', u'Ш'}, {'O', u'Щ'}, {'P', u'З'}, {'{', u'Х'}, {'}', u'Ъ'},
+        {'A', u'Ф'}, {'S', u'Ы'}, {'D', u'В'}, {'F', u'А'}, {'G', u'П'}, {'H', u'Р'}, {'J', u'О'}, {'K', u'Л'}, {'L', u'Д'}, {':', u'Ж'}, {'"', u'Э'},
+        {'Z', u'Я'}, {'X', u'Ч'}, {'C', u'С'}, {'V', u'М'}, {'B', u'И'}, {'N', u'Т'}, {'M', u'Ь'}, {'<', u'Б'}, {'>', u'Ю'}
+    };
+
+    QString result;
+    result.reserve(input.length());
+    for (QChar c : input) {
+        if (enToRu.contains(c)) {
+            result.append(enToRu.value(c));
+        } else {
+            result.append(c);
+        }
+    }
+    return result;
+}
+
 static int boundedDamerauLevenshtein(const QString &s1, const QString &s2, int maxDist) {
     int len1 = s1.length();
     int len2 = s2.length();
     if (std::abs(len1 - len2) > maxDist) return maxDist + 1;
 
-    std::vector<int> prev(len2 + 1), curr(len2 + 1);
+    std::vector<int> prev2(len2 + 1, 0), prev(len2 + 1), curr(len2 + 1);
     for (int j = 0; j <= len2; ++j) prev[j] = j;
 
     for (int i = 1; i <= len1; ++i) {
@@ -849,12 +872,13 @@ static int boundedDamerauLevenshtein(const QString &s1, const QString &s2, int m
             int cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1;
             curr[j] = std::min({ prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost });
             if (i > 1 && j > 1 && s1[i - 1] == s2[j - 2] && s1[i - 2] == s2[j - 1]) {
-                curr[j] = std::min(curr[j], prev[j - 2] + 1);
+                curr[j] = std::min(curr[j], prev2[j - 2] + 1);
             }
             minInRow = std::min(minInRow, curr[j]);
         }
         if (minInRow > maxDist) return maxDist + 1;
-        prev = curr;
+        prev2 = prev;
+        prev  = curr;
     }
     return prev[len2];
 }
@@ -927,7 +951,7 @@ static int matchSingleQuery(const QString &name, const QString &genericName, con
         }
     }
 
-    // 7. High-Precision Damerau-Levenshtein Edit Distance (e.g. "stream" vs "Steam" - 1 insertion/typo)
+    // 7. High-Precision Damerau-Levenshtein Edit Distance (e.g. "ca" vs "ac", "stema" vs "steam")
     int maxAllowedDist = (qLen <= 4) ? 1 : 2;
     int editDist = boundedDamerauLevenshtein(qLower, nLower, maxAllowedDist);
     if (editDist <= maxAllowedDist) {
@@ -987,15 +1011,19 @@ int FuzzyMatcher::score(int sourceRow) const {
     QString qwertTrans = convertRuToEn(m_query);
     int scoreQwerty = (qwertTrans != m_query) ? matchSingleQuery(name, genericName, comment, exec, keywords, qwertTrans) : 0;
 
+    QString enToRuTrans = convertEnToRu(m_query);
+    int scoreEnToRu = (enToRuTrans != m_query) ? matchSingleQuery(name, genericName, comment, exec, keywords, enToRuTrans) : 0;
+
     QString mnemonTrans = convertRuToEnMnemonic(m_query);
     int scoreMnemonic = (mnemonTrans != m_query && mnemonTrans != qwertTrans) ? matchSingleQuery(name, genericName, comment, exec, keywords, mnemonTrans) : 0;
 
-    int finalScore = std::max({scoreOrig, scoreQwerty, scoreMnemonic});
+    int finalScore = std::max({scoreOrig, scoreQwerty, scoreEnToRu, scoreMnemonic});
 
-    // Add Frecency Ranker bonus for frequently/recently launched apps
+    // Add Logarithmically Clamped Frecency Ranker bonus (max 900 points, never crosses 10,000 relevance tier boundary)
     if (finalScore > 0 && !desktopFile.isEmpty()) {
-        int frecencyScore = static_cast<int>(FrecencyRanker::instance()->getScore(desktopFile));
-        finalScore += frecencyScore * 100;
+        double rawFrecency = FrecencyRanker::instance()->getScore(desktopFile);
+        int historyBonus = std::clamp(qRound(180.0 * std::log1p(rawFrecency)), 0, 900);
+        finalScore += historyBonus;
     }
 
     m_scoreCache[sourceRow] = finalScore;
@@ -1897,6 +1925,9 @@ Item {
             onClicked: {
                 root.launchApp(model.exec || "", model.desktopFile || model.id || "")
             }
+            function activate() {
+                root.launchApp(model.exec || "", model.desktopFile || model.id || "")
+            }
         }
 
         flickDeceleration: 1500
@@ -2034,18 +2065,8 @@ Item {
                 root.launchApp("xdg-open 'https://www.google.com/search?q=" + encodeURIComponent(root.query) + "'", "")
             } else if (root.extraSelectionIndex === 0) {
                 root.launchApp(root.query, "")
-            } else if (list.currentIndex >= 0 && list.currentIndex < list.count) {
-                var itemModel = list.model.index(list.currentIndex, 0)
-                var roles = list.model.roleNames ? list.model.roleNames() : {}
-                var execRole = 260
-                var desktopRole = 263
-                for (var r in roles) {
-                    if (roles[r] === "exec") execRole = parseInt(r)
-                    if (roles[r] === "desktopFile") desktopRole = parseInt(r)
-                }
-                var execStr = list.model.data(itemModel, execRole)
-                var desktopFileStr = list.model.data(itemModel, desktopRole)
-                root.launchApp(execStr || "", desktopFileStr || "")
+            } else if (list.currentItem && typeof list.currentItem.activate === "function") {
+                list.currentItem.activate()
             } else if (root.query.length > 0) {
                 root.launchApp(root.query, "")
             }
@@ -2230,6 +2251,118 @@ Item {
                 wrapMode: Text.WordWrap
                 elide: Text.ElideRight
                 maximumLineCount: 2
+            }
+        }
+
+        MouseArea {
+            id: mouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: root.clicked()
+        }
+    }
+}
+
+
+--- File: qml/AppListDelegate.qml ---
+import QtQuick
+import com.quasar.launcher 1.0
+
+Item {
+    id: root
+    width: ListView.view ? ListView.view.width : 600
+    height: (typeof ThemeManager !== "undefined" && ThemeManager.showIcons ? Math.max(ThemeManager.iconSize + 12, 40) : 38)
+
+    signal clicked()
+
+    function activate() {
+        root.clicked()
+    }
+
+    property bool isCurrentItem: ListView.isCurrentItem
+
+    Rectangle {
+        id: background
+        anchors.fill: parent
+        anchors.leftMargin: 4
+        anchors.rightMargin: 4
+        anchors.topMargin: 2
+        anchors.bottomMargin: 2
+        radius: typeof ThemeManager !== "undefined" ? Math.min(ThemeManager.borderRadius, 6) : 6
+
+        color: (mouseArea.containsMouse || isCurrentItem) ? 
+            (typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa") : 
+            "transparent"
+
+        Behavior on color {
+            ColorAnimation { duration: 100 }
+        }
+
+        Row {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 10
+
+            Image {
+                id: appIcon
+                width: typeof ThemeManager !== "undefined" ? ThemeManager.iconSize : 24
+                height: width
+                anchors.verticalCenter: parent.verticalCenter
+                visible: typeof ThemeManager !== "undefined" ? ThemeManager.showIcons : true
+                source: model.iconName ? "image://icon/" + model.iconName : ""
+                sourceSize: Qt.size(width, height)
+                fillMode: Image.PreserveAspectFit
+            }
+
+            Text {
+                id: appName
+                text: model.highlightedName || model.name || ""
+                textFormat: Text.StyledText
+                color: (mouseArea.containsMouse || isCurrentItem) ? 
+                    "#ffffff" : 
+                    (typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4")
+                font.pixelSize: typeof ThemeManager !== "undefined" ? ThemeManager.fontSize : 14
+                font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
+                font.bold: isCurrentItem
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - (appIcon.visible ? appIcon.width + parent.spacing : 0) - (actionBadge.visible ? actionBadge.width + parent.spacing + 20 : 0) - (commentText.visible ? commentText.width + parent.spacing : 0)
+                elide: Text.ElideRight
+            }
+
+            Text {
+                id: commentText
+                text: model.genericName || model.comment || ""
+                color: (mouseArea.containsMouse || isCurrentItem) ? 
+                    Qt.alpha("#ffffff", 0.75) : 
+                    Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.secondaryTextColor : "#a6adc8", 0.7)
+                font.pixelSize: (typeof ThemeManager !== "undefined" ? ThemeManager.fontSize : 14) - 2
+                font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
+                anchors.verticalCenter: parent.verticalCenter
+                visible: text.length > 0 && parent.width > 380
+                elide: Text.ElideRight
+            }
+        }
+
+        // Action badge on right for current item (like "Open" / "↵ Launch")
+        Rectangle {
+            id: actionBadge
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            height: 22
+            width: actionText.width + 16
+            radius: 4
+            color: "#ffffff25"
+            visible: isCurrentItem
+
+            Text {
+                id: actionText
+                anchors.centerIn: parent
+                text: "Open ↵"
+                color: "#ffffff"
+                font.pixelSize: 11
+                font.bold: true
             }
         }
 

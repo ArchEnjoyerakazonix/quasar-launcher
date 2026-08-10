@@ -1,5 +1,5 @@
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <g>
+  <g transform="translate(256 256) scale(1.15) translate(-256 -256)">
     <ellipse cx="256" cy="256" rx="205" ry="52"
       transform="rotate(-22 256 256)"
       fill="none" stroke="#8B5CF6" stroke-width="22" stroke-linecap="round"/>

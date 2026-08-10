@@ -8,6 +8,10 @@ Item {
 
     signal clicked()
 
+    function activate() {
+        root.clicked()
+    }
+
     property bool isCurrentItem: ListView.isCurrentItem
 
     Rectangle {
