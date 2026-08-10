@@ -22,6 +22,8 @@ qt_add_executable(quasar
     src/frecencyranker.h
     src/thememanager.cpp
     src/thememanager.h
+    src/windowswitcher.cpp
+    src/windowswitcher.h
 )
 
 qt_add_qml_module(quasar

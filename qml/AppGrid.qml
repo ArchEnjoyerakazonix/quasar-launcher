@@ -135,9 +135,7 @@ Item {
                     hoverEnabled: true
                     preventStealing: true
                     onClicked: {
-                        var webUrl = "https://www.google.com/search?q=" + encodeURIComponent(root.query)
-                        Qt.openUrlExternally(webUrl)
-                        if (typeof rootWindow !== "undefined" && rootWindow) rootWindow.hide()
+                        root.launchApp("__web__", "")
                     }
                 }
             }
@@ -167,7 +165,7 @@ Item {
 
         Keys.onReturnPressed: {
             if (root.extraSelectionIndex === 1) {
-                root.launchApp("xdg-open 'https://www.google.com/search?q=" + encodeURIComponent(root.query) + "'", "")
+                root.launchApp("__web__", "")
             } else if (root.extraSelectionIndex === 0) {
                 root.launchApp(root.query, "")
             } else if (grid.currentItem && typeof grid.currentItem.activate === "function") {
@@ -197,8 +195,11 @@ Item {
         }
 
         Keys.onDownPressed: {
-            if (grid.currentIndex < grid.count - Math.floor(grid.width / grid.cellWidth)) {
+            var cols = Math.max(1, Math.floor(grid.width / grid.cellWidth))
+            if (grid.currentIndex + cols < grid.count) {
                 grid.moveCurrentIndexDown()
+            } else if (grid.currentIndex < grid.count - 1) {
+                grid.currentIndex = grid.count - 1
             } else if (root.query.length > 0) {
                 if (root.extraSelectionIndex < 1) {
                     root.extraSelectionIndex++

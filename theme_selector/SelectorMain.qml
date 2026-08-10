@@ -150,6 +150,7 @@ Window {
                 }
 
                 Flow {
+                    width: parent.width
                     Layout.fillWidth: true
                     spacing: 8
 

@@ -49,6 +49,7 @@ Item {
                 source: model.iconName ? "image://icon/" + model.iconName : ""
                 sourceSize: Qt.size(width, height)
                 fillMode: Image.PreserveAspectFit
+                asynchronous: true
             }
 
             Text {
