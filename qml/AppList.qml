@@ -92,7 +92,7 @@ Item {
                     hoverEnabled: true
                     preventStealing: true
                     onClicked: {
-                        root.launchApp(root.query, "")
+                        root.launchApp("__shell__:" + root.query, "")
                     }
                 }
             }
@@ -139,7 +139,7 @@ Item {
                     hoverEnabled: true
                     preventStealing: true
                     onClicked: {
-                        root.launchApp("__web__", "")
+                        root.launchApp("__web__:" + root.query, "")
                     }
                 }
             }
@@ -177,9 +177,9 @@ Item {
                     root.launchApp("__focus__", itemData.address)
                 }
             } else if (root.extraSelectionIndex === 1) {
-                root.launchApp("__web__", "")
+                root.launchApp("__web__:" + root.query, "")
             } else if (root.extraSelectionIndex === 0) {
-                root.launchApp(root.query, "")
+                root.launchApp("__shell__:" + root.query, "")
             } else if (list.currentItem && typeof list.currentItem.activate === "function") {
                 list.currentItem.activate()
             } else if (root.query.length > 0) {
