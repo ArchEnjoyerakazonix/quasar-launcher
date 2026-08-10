@@ -23,10 +23,17 @@
 #include "thememanager.h"
 #include "launchercontroller.h"
 
+#include <QPixmapCache>
+#include <QSet>
+#include <QScreen>
+#include <QCursor>
+
 class IconProvider : public QQuickImageProvider
 {
 public:
-    IconProvider() : QQuickImageProvider(QQuickImageProvider::Pixmap) {}
+    IconProvider() : QQuickImageProvider(QQuickImageProvider::Pixmap) {
+        QPixmapCache::setCacheLimit(20480); // 20 MB cache
+    }
 
     QPixmap requestPixmap(const QString &id, QSize *size, const QSize &requestedSize) override
     {
@@ -40,25 +47,45 @@ public:
             return QPixmap(width, height);
         }
 
+        QString cacheKey = QString("%1_%2x%3").arg(id).arg(width).arg(height);
+        QPixmap cachedPixmap;
+        if (QPixmapCache::find(cacheKey, &cachedPixmap)) {
+            return cachedPixmap;
+        }
+
+        static QSet<QString> negativeCache;
+        if (negativeCache.contains(cacheKey)) {
+            QIcon fallback = QIcon::fromTheme(QStringLiteral("application-x-executable"));
+            return fallback.isNull() ? QPixmap(width, height) : fallback.pixmap(width, height);
+        }
+
         // 1. Direct File Path Check (Absolute path or local file)
         if (id.startsWith(QLatin1Char('/')) || QFile::exists(id)) {
             QPixmap pix(id);
             if (!pix.isNull()) {
-                return pix.scaled(width, height, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                QPixmap scaled = pix.scaled(width, height, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                QPixmapCache::insert(cacheKey, scaled);
+                return scaled;
             }
         }
 
         // 2. Icon Theme Lookup
         QIcon icon = QIcon::fromTheme(id);
         if (!icon.isNull()) {
-            return icon.pixmap(width, height);
+            QPixmap pix = icon.pixmap(width, height);
+            if (!pix.isNull()) {
+                QPixmapCache::insert(cacheKey, pix);
+                return pix;
+            }
         }
 
-        // 3. Fallback search for JetBrains / custom app icons (e.g. pycharm, datagrip)
+        // 3. Fallback search for JetBrains / Flatpak / custom app icons
         static const QStringList searchPaths = {
             QDir::homePath() + "/.local/share/icons",
             QDir::homePath() + "/.local/share/icons/hicolor/scalable/apps",
+            QDir::homePath() + "/.local/share/flatpak/exports/share/icons",
             QDir::homePath() + "/.icons",
+            "/var/lib/flatpak/exports/share/icons",
             "/usr/share/icons/hicolor/scalable/apps",
             "/usr/share/icons/hicolor/512x512/apps",
             "/usr/share/pixmaps"
@@ -76,11 +103,15 @@ public:
                 if (QFile::exists(path)) {
                     QPixmap pix(path);
                     if (!pix.isNull()) {
-                        return pix.scaled(width, height, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                        QPixmap scaled = pix.scaled(width, height, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                        QPixmapCache::insert(cacheKey, scaled);
+                        return scaled;
                     }
                 }
             }
         }
+
+        negativeCache.insert(cacheKey);
 
         // 4. Default fallback icon
         QIcon fallback = QIcon::fromTheme(QStringLiteral("application-x-executable"));
@@ -118,10 +149,14 @@ int main(int argc, char *argv[])
     parser.addOption(toggleOption);
     parser.process(app);
 
-    QDBusConnection::sessionBus().registerService(dbusServiceName);
+    if (!QDBusConnection::sessionBus().registerService(dbusServiceName)) {
+        qWarning() << "Failed to register D-Bus service:" << dbusServiceName;
+    }
 
     LauncherController controller;
-    QDBusConnection::sessionBus().registerObject("/Main", "com.quasar.launcher", &controller, QDBusConnection::ExportAllSlots);
+    if (!QDBusConnection::sessionBus().registerObject("/Main", "com.quasar.launcher", &controller, QDBusConnection::ExportAllSlots)) {
+        qWarning() << "Failed to register D-Bus object /Main";
+    }
 
     AppIndexer *appIndexer = new AppIndexer(&app);
     FuzzyMatcher *fuzzyMatcher = new FuzzyMatcher(&app);
@@ -150,6 +185,10 @@ int main(int argc, char *argv[])
         if (rootWindow->isVisible()) {
             rootWindow->hide();
         } else {
+            QScreen *cursorScreen = QGuiApplication::screenAt(QCursor::pos());
+            if (cursorScreen) {
+                rootWindow->setScreen(cursorScreen);
+            }
             rootWindow->show();
             rootWindow->requestActivate();
             QMetaObject::invokeMethod(rootWindow, "onOpened");

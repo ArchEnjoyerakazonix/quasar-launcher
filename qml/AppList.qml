@@ -23,9 +23,6 @@ Item {
             onClicked: {
                 root.launchApp(model.exec || "", model.desktopFile || model.id || "")
             }
-            function activate() {
-                root.launchApp(model.exec || "", model.desktopFile || model.id || "")
-            }
         }
 
         flickDeceleration: 1500
