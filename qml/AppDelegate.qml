@@ -3,8 +3,8 @@ import com.quasar.launcher 1.0
 
 Item {
     id: root
-    width: 110
-    height: 130
+    width: GridView.view ? GridView.view.cellWidth : 120
+    height: GridView.view ? GridView.view.cellHeight : 140
 
     signal clicked()
 
@@ -53,7 +53,8 @@ Item {
                 color: typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#ffffff"
                 font.pixelSize: typeof ThemeManager !== "undefined" ? ThemeManager.fontSize : 13
                 font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
-                width: 96
+                width: root.width - 16
+                anchors.horizontalCenter: parent.horizontalCenter
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
                 elide: Text.ElideRight

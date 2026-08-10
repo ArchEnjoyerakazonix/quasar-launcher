@@ -11,8 +11,8 @@ Item {
     GridView {
         id: grid
         anchors.fill: parent
-        cellWidth: 120
-        cellHeight: 140
+        cellWidth: Math.floor(width / 5)
+        cellHeight: 130
 
         model: typeof fuzzyMatcher !== "undefined" ? fuzzyMatcher : null
         delegate: AppDelegate {

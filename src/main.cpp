@@ -13,6 +13,8 @@
 #include <QIcon>
 #include <QQuickImageProvider>
 #include <QPixmap>
+#include <QFile>
+#include <QDir>
 #include <QDebug>
 
 #include "frecencyranker.h"
@@ -33,12 +35,60 @@ public:
         if (size) {
             *size = QSize(width, height);
         }
-        
-        QIcon icon = QIcon::fromTheme(id);
-        if (icon.isNull()) {
+
+        if (id.isEmpty()) {
             return QPixmap(width, height);
         }
-        return icon.pixmap(width, height);
+
+        // 1. Direct File Path Check (Absolute path or local file)
+        if (id.startsWith(QLatin1Char('/')) || QFile::exists(id)) {
+            QPixmap pix(id);
+            if (!pix.isNull()) {
+                return pix.scaled(width, height, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            }
+        }
+
+        // 2. Icon Theme Lookup
+        QIcon icon = QIcon::fromTheme(id);
+        if (!icon.isNull()) {
+            return icon.pixmap(width, height);
+        }
+
+        // 3. Fallback search for JetBrains / custom app icons (e.g. pycharm, datagrip)
+        static const QStringList searchPaths = {
+            QDir::homePath() + "/.local/share/icons",
+            QDir::homePath() + "/.local/share/icons/hicolor/scalable/apps",
+            QDir::homePath() + "/.icons",
+            "/usr/share/icons/hicolor/scalable/apps",
+            "/usr/share/icons/hicolor/512x512/apps",
+            "/usr/share/pixmaps"
+        };
+
+        QString cleanName = id;
+        int lastSlash = cleanName.lastIndexOf(QLatin1Char('/'));
+        if (lastSlash != -1) {
+            cleanName = cleanName.mid(lastSlash + 1);
+        }
+
+        for (const QString &dir : searchPaths) {
+            for (const QString &ext : { "", ".png", ".svg", ".xpm" }) {
+                QString path = dir + "/" + cleanName + ext;
+                if (QFile::exists(path)) {
+                    QPixmap pix(path);
+                    if (!pix.isNull()) {
+                        return pix.scaled(width, height, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                    }
+                }
+            }
+        }
+
+        // 4. Default fallback icon
+        QIcon fallback = QIcon::fromTheme(QStringLiteral("application-x-executable"));
+        if (!fallback.isNull()) {
+            return fallback.pixmap(width, height);
+        }
+
+        return QPixmap(width, height);
     }
 };
 

@@ -121,6 +121,32 @@ static QString convertRuToEn(const QString &input) {
     return result;
 }
 
+static QString convertRuToEnMnemonic(const QString &input) {
+    static const QHash<QChar, QString> ruToMnemonic = {
+        {u'а', "a"}, {u'б', "b"}, {u'в', "v"}, {u'г', "g"}, {u'д', "d"}, {u'е', "e"}, {u'ё', "e"},
+        {u'ж', "z"}, {u'з', "z"}, {u'и', "i"}, {u'й', "y"}, {u'к', "k"}, {u'л', "l"}, {u'м', "m"},
+        {u'н', "n"}, {u'о', "o"}, {u'п', "p"}, {u'р', "r"}, {u'с', "s"}, {u'т', "t"}, {u'у', "u"},
+        {u'ф', "f"}, {u'х', "h"}, {u'ц', "c"}, {u'ч', "ch"}, {u'ш', "sh"}, {u'щ', "sch"}, {u'ь', "'"},
+        {u'ы', "y"}, {u'ъ', "'"}, {u'э', "e"}, {u'ю', "u"}, {u'я', "ya"},
+        {u'А', "A"}, {u'Б', "B"}, {u'В', "V"}, {u'Г', "G"}, {u'Д', "D"}, {u'Е', "E"}, {u'Ё', "E"},
+        {u'Ж', "Z"}, {u'З', "Z"}, {u'И', "I"}, {u'Й', "Y"}, {u'К', "K"}, {u'Л', "L"}, {u'М', "M"},
+        {u'Н', "N"}, {u'О', "O"}, {u'П', "P"}, {u'Р', "R"}, {u'С', "S"}, {u'Т', "T"}, {u'У', "U"},
+        {u'Ф', "F"}, {u'Х', "H"}, {u'Ц', "C"}, {u'Ч', "Ch"}, {u'Ш', "Sh"}, {u'Щ', "Sch"}, {u'Ь', "'"},
+        {u'Ы', "Y"}, {u'Ъ', "'"}, {u'Э', "E"}, {u'Ю', "U"}, {u'Я', "Ya"}
+    };
+
+    QString result;
+    result.reserve(input.length() * 2);
+    for (QChar c : input) {
+        if (ruToMnemonic.contains(c)) {
+            result.append(ruToMnemonic.value(c));
+        } else {
+            result.append(c);
+        }
+    }
+    return result;
+}
+
 static int matchSingleQuery(const QString &name, const QString &genericName, const QString &comment, const QString &query) {
     if (query.isEmpty()) return 1;
 
@@ -172,6 +198,20 @@ static int matchSingleQuery(const QString &name, const QString &genericName, con
                 }
                 if (qIdx == qLen) {
                     finalScore = 1000 + (100 - name.length());
+                } else {
+                    // 7. Soft Character Overlap Match (Sloppy match like dotfiles Levendist/Fuzzy)
+                    int matchedCount = 0;
+                    QString nTemp = nLower;
+                    for (int i = 0; i < qLen; ++i) {
+                        int pos = nTemp.indexOf(qLower[i]);
+                        if (pos != -1) {
+                            matchedCount++;
+                            nTemp.remove(pos, 1);
+                        }
+                    }
+                    if (matchedCount >= 1 && (matchedCount >= qLen / 2 || qLen <= 2)) {
+                        finalScore = 100 + (matchedCount * 20) - name.length();
+                    }
                 }
             }
         }
@@ -198,10 +238,14 @@ int FuzzyMatcher::score(int sourceRow) const {
     }
 
     int scoreOrig = matchSingleQuery(name, genericName, comment, m_query);
-    QString translatedQuery = convertRuToEn(m_query);
-    int scoreTrans = (translatedQuery != m_query) ? matchSingleQuery(name, genericName, comment, translatedQuery) : 0;
+    
+    QString qwertTrans = convertRuToEn(m_query);
+    int scoreQwerty = (qwertTrans != m_query) ? matchSingleQuery(name, genericName, comment, qwertTrans) : 0;
 
-    int finalScore = std::max(scoreOrig, scoreTrans);
+    QString mnemonTrans = convertRuToEnMnemonic(m_query);
+    int scoreMnemonic = (mnemonTrans != m_query && mnemonTrans != qwertTrans) ? matchSingleQuery(name, genericName, comment, mnemonTrans) : 0;
+
+    int finalScore = std::max({scoreOrig, scoreQwerty, scoreMnemonic});
     m_scoreCache[sourceRow] = finalScore;
     return finalScore;
 }
@@ -210,11 +254,20 @@ QString FuzzyMatcher::formatHighlightedName(const QString &name, const QString &
     if (query.isEmpty()) return name.toHtmlEscaped();
 
     QString activeQuery = query;
-    if (matchSingleQuery(name, QString(), QString(), activeQuery) == 0) {
-        QString trans = convertRuToEn(query);
-        if (matchSingleQuery(name, QString(), QString(), trans) > 0) {
-            activeQuery = trans;
-        }
+    int bestScore = matchSingleQuery(name, QString(), QString(), activeQuery);
+    
+    QString qwertTrans = convertRuToEn(query);
+    int sQ = (qwertTrans != query) ? matchSingleQuery(name, QString(), QString(), qwertTrans) : 0;
+    if (sQ > bestScore) {
+        bestScore = sQ;
+        activeQuery = qwertTrans;
+    }
+
+    QString mnemonTrans = convertRuToEnMnemonic(query);
+    int sM = (mnemonTrans != query) ? matchSingleQuery(name, QString(), QString(), mnemonTrans) : 0;
+    if (sM > bestScore) {
+        bestScore = sM;
+        activeQuery = mnemonTrans;
     }
 
     QString qLower = activeQuery.toLower();
