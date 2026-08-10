@@ -93,11 +93,39 @@ QHash<int, QByteArray> AppIndexer::roleNames() const
     return roles;
 }
 
+#include <QDesktopServices>
+#include <QUrl>
+
 void AppIndexer::launch(const QString& execStr)
 {
-    QString exec = execStr;
+    QString exec = execStr.trimmed();
+    if (exec.isEmpty()) return;
 
-    // Strip field codes: %f %F %u %U %i %c %k
+    // 1. Web search launch
+    if (exec.startsWith("__web__:") || exec == "__web__") {
+        QString query = exec.startsWith("__web__:") ? exec.mid(8).trimmed() : QString();
+        if (query.startsWith("?")) query = query.mid(1).trimmed();
+        if (query.isEmpty()) return;
+        QString searchUrl = "https://www.google.com/search?q=" + QString::fromUtf8(QUrl::toPercentEncoding(query));
+        QDesktopServices::openUrl(QUrl(searchUrl));
+        return;
+    }
+
+    // 2. Shell command launch
+    if (exec.startsWith("__shell__:") || exec.startsWith("$")) {
+        QString cmd = exec.startsWith("__shell__:") ? exec.mid(10).trimmed() : exec.mid(1).trimmed();
+        if (cmd.isEmpty()) return;
+        QProcess::startDetached("kitty", QStringList() << "-1" << "bash" << "-c" << (cmd + "; read -p 'Press enter to exit...'"));
+        return;
+    }
+
+    // 3. Slash action command launch
+    if (exec.startsWith("/")) {
+        QProcess::startDetached("bash", QStringList() << "-c" << exec);
+        return;
+    }
+
+    // 4. Desktop App launch
     static const QRegularExpression fieldCodes(QStringLiteral("%[fFuUick]\\b"));
     exec.replace(fieldCodes, QString());
     exec = exec.trimmed();
