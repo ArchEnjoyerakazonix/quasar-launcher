@@ -77,6 +77,7 @@ public:
     Q_INVOKABLE void loadPreset(const QString &presetName);
     Q_INVOKABLE QStringList getAvailablePresets() const;
     Q_INVOKABLE QString getPresetCategory(const QString &presetName) const;
+    Q_INVOKABLE QVariantMap getPresetDetails(const QString &presetName) const;
     Q_INVOKABLE bool exportTheme(const QString &filePath);
     Q_INVOKABLE bool importTheme(const QString &filePath);
 

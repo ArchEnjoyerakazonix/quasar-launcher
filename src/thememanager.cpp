@@ -174,6 +174,21 @@ QString ThemeManager::getPresetCategory(const QString &presetName) const
     return "Dark";
 }
 
+QVariantMap ThemeManager::getPresetDetails(const QString &presetName) const
+{
+    ThemeManager tmp;
+    tmp.loadPreset(presetName);
+    QVariantMap map;
+    map["backgroundColor"] = tmp.backgroundColor();
+    map["accentColor"] = tmp.accentColor();
+    map["cardColor"] = tmp.cardColor();
+    map["textColor"] = tmp.textColor();
+    map["secondaryTextColor"] = tmp.secondaryTextColor();
+    map["promptText"] = tmp.promptText();
+    map["layoutMode"] = tmp.layoutMode();
+    return map;
+}
+
 bool ThemeManager::exportTheme(const QString &filePath)
 {
     QString cleanPath = filePath;
