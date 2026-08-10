@@ -58,12 +58,7 @@ int main(int argc, char *argv[])
             if (lsw) {
                 lsw->setLayer(LayerShellQt::Window::LayerOverlay);
                 lsw->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
-                LayerShellQt::Window::Anchors anchors = LayerShellQt::Window::AnchorTop;
-                anchors |= LayerShellQt::Window::AnchorBottom;
-                anchors |= LayerShellQt::Window::AnchorLeft;
-                anchors |= LayerShellQt::Window::AnchorRight;
-                lsw->setAnchors(anchors);
-                lsw->setExclusiveZone(-1);
+                lsw->setAnchors(LayerShellQt::Window::Anchors()); // Centered floating popup!
             }
             window->show();
             window->requestActivate();
