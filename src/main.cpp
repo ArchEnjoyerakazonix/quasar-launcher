@@ -1,6 +1,7 @@
 #include <QGuiApplication>
 #include <QCoreApplication>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusMessage>
@@ -81,6 +82,12 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("com.quasar.launcher", 1, 0, "ThemeManager", ThemeManager::instance());
 
     QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty("fuzzyMatcher", fuzzyMatcher);
+    engine.rootContext()->setContextProperty("appIndexer", appIndexer);
+    engine.rootContext()->setContextProperty("themeManager", ThemeManager::instance());
+    engine.rootContext()->setContextProperty("FuzzyMatcher", fuzzyMatcher);
+    engine.rootContext()->setContextProperty("AppIndexer", appIndexer);
+    engine.rootContext()->setContextProperty("ThemeManager", ThemeManager::instance());
     engine.addImageProvider(QLatin1String("icon"), new IconProvider);
 
     QWindow *rootWindow = nullptr;
