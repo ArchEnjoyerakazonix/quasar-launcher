@@ -4,7 +4,7 @@ import com.quasar.launcher 1.0
 Item {
     id: root
     width: ListView.view ? ListView.view.width : 600
-    height: (typeof ThemeManager !== "undefined" && ThemeManager.showIcons ? Math.max(ThemeManager.iconSize + 12, 40) : 38)
+    height: (typeof ThemeManager !== "undefined" && ThemeManager.layoutMode === "compact") ? 32 : (typeof ThemeManager !== "undefined" && ThemeManager.showIcons ? Math.max(ThemeManager.iconSize + 12, 40) : 38)
 
     signal clicked()
 
@@ -42,7 +42,7 @@ Item {
 
             Image {
                 id: appIcon
-                width: typeof ThemeManager !== "undefined" ? ThemeManager.iconSize : 24
+                width: (typeof ThemeManager !== "undefined" && ThemeManager.layoutMode === "compact") ? 20 : (typeof ThemeManager !== "undefined" ? ThemeManager.iconSize : 24)
                 height: width
                 anchors.verticalCenter: parent.verticalCenter
                 visible: typeof ThemeManager !== "undefined" ? ThemeManager.showIcons : true

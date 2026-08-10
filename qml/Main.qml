@@ -76,7 +76,7 @@ Window {
                 width: parent.width
                 height: parent.height - searchBar.height - parent.spacing
                 query: searchBar.text
-                visible: typeof ThemeManager === "undefined" || ThemeManager.layoutMode === "list"
+                visible: typeof ThemeManager === "undefined" || ThemeManager.layoutMode === "list" || ThemeManager.layoutMode === "compact"
 
                 onRequestSearchFocus: {
                     searchBar.forceActiveFocus()
