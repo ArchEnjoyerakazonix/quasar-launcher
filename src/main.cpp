@@ -24,6 +24,7 @@
 #include "thememanager.h"
 #include "launchercontroller.h"
 #include "windowswitcher.h"
+#include "actionmodel.h"
 
 #include <QPixmapCache>
 #include <QSet>
@@ -170,14 +171,17 @@ int main(int argc, char *argv[])
 
     AppIndexer *appIndexer = new AppIndexer(&app);
     WindowSwitcher *windowSwitcher = new WindowSwitcher(&app);
+    ActionModel *actionModel = new ActionModel(&app);
     FuzzyMatcher *fuzzyMatcher = new FuzzyMatcher(&app);
     fuzzyMatcher->setAppIndexerModel(appIndexer);
     fuzzyMatcher->setWindowModel(windowSwitcher->model());
+    fuzzyMatcher->setActionModel(actionModel);
 
     qmlRegisterSingletonInstance("com.quasar.launcher", 1, 0, "FrecencyRanker", FrecencyRanker::instance());
     qmlRegisterSingletonInstance("com.quasar.launcher", 1, 0, "AppIndexer", appIndexer);
     qmlRegisterSingletonInstance("com.quasar.launcher", 1, 0, "FuzzyMatcher", fuzzyMatcher);
     qmlRegisterSingletonInstance("com.quasar.launcher", 1, 0, "ThemeManager", ThemeManager::instance());
+    qmlRegisterSingletonInstance("com.quasar.launcher", 1, 0, "ActionModel", actionModel);
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("fuzzyMatcher", fuzzyMatcher);

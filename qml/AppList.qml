@@ -22,7 +22,16 @@ Item {
         model: typeof fuzzyMatcher !== "undefined" ? fuzzyMatcher : null
         delegate: AppListDelegate {
             onClicked: {
-                root.launchApp(model.exec || "", model.desktopFile || model.id || "")
+                var execCmd = model.exec || ""
+                var categories = model.categories || ""
+                if (categories === "Action" || (typeof ActionModel !== "undefined" && (execCmd.startsWith("gsettings") || execCmd.startsWith("quasar") || execCmd.startsWith("bash") || execCmd.startsWith("hyprctl") || execCmd.startsWith("cliphist")))) {
+                    if (typeof ActionModel !== "undefined") {
+                        ActionModel.execute(execCmd)
+                    }
+                    root.launchApp("__action__", "")
+                } else {
+                    root.launchApp(execCmd, model.desktopFile || model.id || "")
+                }
             }
         }
 

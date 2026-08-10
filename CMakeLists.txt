@@ -24,6 +24,8 @@ qt_add_executable(quasar
     src/thememanager.h
     src/windowswitcher.cpp
     src/windowswitcher.h
+    src/actionmodel.cpp
+    src/actionmodel.h
 )
 
 qt_add_qml_module(quasar

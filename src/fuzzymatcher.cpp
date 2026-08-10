@@ -22,6 +22,10 @@ void FuzzyMatcher::setWindowModel(QAbstractItemModel *windowModel) {
     m_windowModel = windowModel;
 }
 
+void FuzzyMatcher::setActionModel(QAbstractItemModel *actionModel) {
+    m_actionModel = actionModel;
+}
+
 void FuzzyMatcher::setAppIndexerModel(QAbstractItemModel *appModel) {
     m_appIndexerModel = appModel;
     setSourceModel(appModel);
@@ -34,6 +38,7 @@ void FuzzyMatcher::setQuery(const QString &newQuery) {
 
     QString trimmed = m_query.trimmed();
     bool isWindowQuery = trimmed.startsWith("w:") || trimmed.startsWith("window:");
+    bool isActionQuery = trimmed.startsWith("/");
 
     if (isWindowQuery && m_windowModel) {
         if (auto *winModel = qobject_cast<WindowListModel*>(m_windowModel)) {
@@ -42,7 +47,11 @@ void FuzzyMatcher::setQuery(const QString &newQuery) {
         if (sourceModel() != m_windowModel) {
             setSourceModel(m_windowModel);
         }
-    } else if (!isWindowQuery && m_appIndexerModel) {
+    } else if (isActionQuery && m_actionModel) {
+        if (sourceModel() != m_actionModel) {
+            setSourceModel(m_actionModel);
+        }
+    } else if (!isWindowQuery && !isActionQuery && m_appIndexerModel) {
         if (sourceModel() != m_appIndexerModel) {
             setSourceModel(m_appIndexerModel);
         }
