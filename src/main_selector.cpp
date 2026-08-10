@@ -5,8 +5,6 @@
 #include <QQuickImageProvider>
 #include <QPixmap>
 #include <QWindow>
-#include <LayerShellQt/window.h>
-#include <LayerShellQt/shell.h>
 #include "thememanager.h"
 
 class IconProvider : public QQuickImageProvider
@@ -32,8 +30,6 @@ public:
 
 int main(int argc, char *argv[])
 {
-    LayerShellQt::Shell::useLayerShell();
-
     QGuiApplication app(argc, argv);
     app.setApplicationName("quasar-theme-selector");
     app.setDesktopFileName("quasar-theme-selector");
@@ -54,12 +50,6 @@ int main(int argc, char *argv[])
 
         QWindow *window = qobject_cast<QWindow*>(obj);
         if (window) {
-            LayerShellQt::Window *lsw = LayerShellQt::Window::get(window);
-            if (lsw) {
-                lsw->setLayer(LayerShellQt::Window::LayerOverlay);
-                lsw->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
-                lsw->setAnchors(LayerShellQt::Window::Anchors()); // Centered floating popup!
-            }
             window->show();
             window->requestActivate();
         }

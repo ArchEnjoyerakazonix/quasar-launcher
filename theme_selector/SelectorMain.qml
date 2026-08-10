@@ -6,8 +6,8 @@ import Quasar 1.0
 
 Window {
     id: window
-    width: 620
-    height: 450
+    width: 650
+    height: 520
     visible: false
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
@@ -40,11 +40,11 @@ Window {
             spacing: 10
 
             // ==========================================
-            // 1. ROFI FILTER & HEADER BAR (Matching Image 2)
+            // 1. ROFI FILTER & HEADER BAR
             // ==========================================
             Rectangle {
                 Layout.fillWidth: true
-                height: 38
+                height: 40
                 color: "#1e1e2e"
                 radius: 4
                 border.color: "#313244"
@@ -52,7 +52,7 @@ Window {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 10
+                    anchors.leftMargin: 12
                     anchors.rightMargin: 10
                     spacing: 8
 
@@ -77,9 +77,15 @@ Window {
                         Keys.onDownPressed: themeList.forceActiveFocus()
                     }
 
+                    Text {
+                        text: presetsModel.count + "/" + presetsModel.count
+                        color: "#6c7086"
+                        font.pixelSize: 12
+                    }
+
                     // Red close button
                     Rectangle {
-                        width: 20; height: 20; radius: 10
+                        width: 22; height: 22; radius: 11
                         color: closeMouse.containsMouse ? "#f38ba8" : "#313244"
                         Text {
                             anchors.centerIn: parent
@@ -100,11 +106,11 @@ Window {
             }
 
             // ==========================================
-            // 2. ROFI HELP INSTRUCTIONS BANNER
+            // 2. ROFI INSTRUCTION BANNER (Matching Rofi text)
             // ==========================================
             Rectangle {
                 Layout.fillWidth: true
-                height: 50
+                height: 46
                 color: "#1e1e2e"
                 radius: 4
                 border.color: "#313244"
@@ -131,7 +137,7 @@ Window {
             }
 
             // ==========================================
-            // 3. LAYOUT MODE PILLS BAR (3 Layout Modes!)
+            // 3. LAYOUT MODE PILLS BAR (3 Modes!)
             // ==========================================
             Rectangle {
                 Layout.fillWidth: true
@@ -151,7 +157,7 @@ Window {
                         font.bold: true
                     }
 
-                    // 1. List Mode
+                    // Mode 1: Vertical List
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -173,7 +179,7 @@ Window {
                         }
                     }
 
-                    // 2. Grid Mode
+                    // Mode 2: Grid View
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -195,7 +201,7 @@ Window {
                         }
                     }
 
-                    // 3. Compact Mode
+                    // Mode 3: Compact Dock
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -220,7 +226,7 @@ Window {
             }
 
             // ==========================================
-            // 4. ROFI THEME SELECTABLE LIST
+            // 4. ROFI THEME LIST (100% Matching Rofi List)
             // ==========================================
             ListView {
                 id: themeList
@@ -233,13 +239,25 @@ Window {
                     ListElement { name: "Catppuccin Mocha"; author: "Catppuccin Team"; category: "Dark" }
                     ListElement { name: "Catppuccin Macchiato"; author: "Catppuccin Team"; category: "Dark" }
                     ListElement { name: "Catppuccin Latte"; author: "Catppuccin Team"; category: "Light" }
+                    ListElement { name: "Adapta-Nokto"; author: "PyGeek03"; category: "Rofi" }
+                    ListElement { name: "android_notification"; author: "Rasi"; category: "Rofi" }
+                    ListElement { name: "Arc-Dark"; author: "leofa"; category: "Rofi" }
+                    ListElement { name: "Arc"; author: "Sergio Morales"; category: "Rofi" }
+                    ListElement { name: "arthur"; author: "Qball"; category: "Rofi" }
+                    ListElement { name: "blue"; author: "Qball"; category: "Rofi" }
+                    ListElement { name: "c64"; author: "Rasi"; category: "Rofi" }
+                    ListElement { name: "DarkBlue"; author: "Qball"; category: "Rofi" }
+                    ListElement { name: "dmenu"; author: "Qball"; category: "Rofi" }
+                    ListElement { name: "docu"; author: "Qball"; category: "Rofi" }
+                    ListElement { name: "fancy2"; author: "Rasi"; category: "Rofi" }
+                    ListElement { name: "fancy"; author: "DaveDavenport"; category: "Rofi" }
+                    ListElement { name: "fullscreen-preview"; author: "Dave Davenport"; category: "Rofi" }
+                    ListElement { name: "glue_pro_blue"; author: "Rasi"; category: "Rofi" }
+                    ListElement { name: "gruvbox-dark-hard"; author: "morhetz"; category: "Retro" }
                     ListElement { name: "Tokyo Night"; author: "folke"; category: "Dark" }
-                    ListElement { name: "Tokyo Night Light"; author: "folke"; category: "Light" }
                     ListElement { name: "Nord Dark"; author: "arcticicestudio"; category: "Dark" }
                     ListElement { name: "Cyberpunk 2077"; author: "CD Projekt Red"; category: "Neon" }
                     ListElement { name: "Dracula"; author: "Zeno Rocha"; category: "Dark" }
-                    ListElement { name: "Gruvbox Dark"; author: "morhetz"; category: "Retro" }
-                    ListElement { name: "Gruvbox Light"; author: "morhetz"; category: "Light" }
                     ListElement { name: "One Dark Pro"; author: "binaryify"; category: "Dark" }
                     ListElement { name: "Monokai Pro"; author: "monokai"; category: "Dark" }
                     ListElement { name: "Rose Pine"; author: "rosepine"; category: "Dark" }
@@ -247,12 +265,6 @@ Window {
                     ListElement { name: "Synthwave '84"; author: "robbowen"; category: "Neon" }
                     ListElement { name: "OLED Black"; author: "Quasar"; category: "Dark" }
                     ListElement { name: "Modern Glass"; author: "Quasar"; category: "Dark" }
-                    ListElement { name: "Rofi Adapta-Nokto"; author: "PyGeek03"; category: "Rofi" }
-                    ListElement { name: "Rofi Arc-Dark"; author: "leofa"; category: "Rofi" }
-                    ListElement { name: "Rofi Solarized"; author: "altercation"; category: "Rofi" }
-                    ListElement { name: "Rofi Monokai"; author: "monokai"; category: "Rofi" }
-                    ListElement { name: "Rofi Material"; author: "material"; category: "Rofi" }
-                    ListElement { name: "Rofi DarkBlue"; author: "Qball"; category: "Rofi" }
                 }
 
                 model: presetsModel
@@ -268,8 +280,8 @@ Window {
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 8
-                        anchors.rightMargin: 8
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
                         spacing: 8
 
                         Rectangle {
