@@ -168,6 +168,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("com.quasar.launcher", 1, 0, "FuzzyMatcher", fuzzyMatcher);
     qmlRegisterSingletonInstance("com.quasar.launcher", 1, 0, "ThemeManager", ThemeManager::instance());
 
+    QQmlApplicationEngine engine;
     WindowSwitcher *windowSwitcher = new WindowSwitcher(&app);
     engine.rootContext()->setContextProperty("fuzzyMatcher", fuzzyMatcher);
     engine.rootContext()->setContextProperty("appIndexer", appIndexer);
