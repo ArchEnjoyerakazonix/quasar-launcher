@@ -11,6 +11,12 @@ Window {
     visible: true
     title: "Quasar Theme Selector & Designer"
     color: "#11111b"
+    flags: Qt.Window
+
+    Shortcut {
+        sequence: "Escape"
+        onActivated: window.close()
+    }
 
     property string selectedCategory: "All"
     property string searchFilter: ""
