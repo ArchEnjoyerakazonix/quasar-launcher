@@ -58,10 +58,15 @@ Window {
                         fuzzyMatcher.query = text
                     }
                 }
-                
-                Keys.onDownPressed: {
+
+                onDownPressed: {
                     if (appList.visible) appList.forceActiveFocus()
                     else if (appGrid.visible) appGrid.forceActiveFocus()
+                }
+
+                onReturnPressed: {
+                    if (appList.visible) appList.handleReturn()
+                    else if (appGrid.visible) appGrid.handleReturn()
                 }
             }
 

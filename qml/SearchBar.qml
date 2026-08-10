@@ -29,6 +29,9 @@ Rectangle {
         onActivated: textInput.text = ""
     }
 
+    signal returnPressed()
+    signal downPressed()
+
     Row {
         anchors.fill: parent
         anchors.leftMargin: 14
@@ -54,6 +57,10 @@ Rectangle {
             font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
             color: typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4"
             clip: true
+
+            onAccepted: root.returnPressed()
+            Keys.onReturnPressed: root.returnPressed()
+            Keys.onDownPressed: root.downPressed()
 
             Text {
                 text: "Type to filter..."

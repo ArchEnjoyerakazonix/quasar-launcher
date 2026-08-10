@@ -167,7 +167,7 @@ Item {
             }
         }
 
-        Keys.onReturnPressed: {
+        function handleReturn() {
             if (root.isWindowMode && list.count > 0 && list.currentIndex >= 0) {
                 var itemData = list.model[list.currentIndex]
                 if (itemData && itemData.address) {
@@ -185,6 +185,10 @@ Item {
             } else if (root.query.length > 0) {
                 root.launchApp(root.query, "")
             }
+        }
+
+        Keys.onReturnPressed: {
+            handleReturn()
         }
 
         Keys.onUpPressed: {
