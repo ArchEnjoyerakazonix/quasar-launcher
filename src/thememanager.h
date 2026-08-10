@@ -26,6 +26,7 @@ class ThemeManager : public QObject {
     Q_PROPERTY(QString promptText READ promptText WRITE setPromptText NOTIFY themeChanged)
     Q_PROPERTY(int windowWidth READ windowWidth WRITE setWindowWidth NOTIFY themeChanged)
     Q_PROPERTY(int windowHeight READ windowHeight WRITE setWindowHeight NOTIFY themeChanged)
+    Q_PROPERTY(bool enableDimOverlay READ enableDimOverlay WRITE setEnableDimOverlay NOTIFY themeChanged)
 
 public:
     static ThemeManager* instance();
@@ -50,6 +51,7 @@ public:
     QString promptText() const { return m_promptText; }
     int windowWidth() const { return m_windowWidth; }
     int windowHeight() const { return m_windowHeight; }
+    bool enableDimOverlay() const { return m_enableDimOverlay; }
 
     void setLayoutMode(const QString &v);
     void setBackgroundColor(const QString &v);
@@ -69,10 +71,14 @@ public:
     void setPromptText(const QString &v);
     void setWindowWidth(int v);
     void setWindowHeight(int v);
+    void setEnableDimOverlay(bool v);
 
     Q_INVOKABLE void saveTheme();
     Q_INVOKABLE void loadPreset(const QString &presetName);
     Q_INVOKABLE QStringList getAvailablePresets() const;
+    Q_INVOKABLE QString getPresetCategory(const QString &presetName) const;
+    Q_INVOKABLE bool exportTheme(const QString &filePath);
+    Q_INVOKABLE bool importTheme(const QString &filePath);
 
 signals:
     void themeChanged();
@@ -104,6 +110,7 @@ private:
     QString m_promptText = "run: ";
     int m_windowWidth = 650;
     int m_windowHeight = 420;
+    bool m_enableDimOverlay = false;
 
     QFileSystemWatcher m_watcher;
 };

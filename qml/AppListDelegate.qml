@@ -31,6 +31,9 @@ Item {
             ColorAnimation { duration: 100 }
         }
 
+        scale: mouseArea.pressed ? 0.98 : 1.0
+        Behavior on scale { NumberAnimation { duration: 80 } }
+
         Row {
             anchors.fill: parent
             anchors.leftMargin: 10

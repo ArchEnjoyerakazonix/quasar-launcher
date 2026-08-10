@@ -24,6 +24,11 @@ Rectangle {
         ColorAnimation { duration: 150 }
     }
 
+    Shortcut {
+        sequence: "Ctrl+U"
+        onActivated: textInput.text = ""
+    }
+
     Row {
         anchors.fill: parent
         anchors.leftMargin: 14
@@ -44,7 +49,7 @@ Rectangle {
         TextInput {
             id: textInput
             anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - (promptLabel.visible ? promptLabel.width + parent.spacing : 0)
+            width: parent.width - (promptLabel.visible ? promptLabel.width + parent.spacing : 0) - (clearBtn.visible ? clearBtn.width + parent.spacing : 0)
             font.pixelSize: typeof ThemeManager !== "undefined" ? ThemeManager.fontSize + 1 : 15
             font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
             color: typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4"
@@ -62,9 +67,42 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
+
+        Rectangle {
+            id: clearBtn
+            width: 22
+            height: 22
+            radius: 11
+            anchors.verticalCenter: parent.verticalCenter
+            visible: textInput.text.length > 0
+            color: clearMouse.containsMouse ? 
+                Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa", 0.3) : 
+                "transparent"
+
+            Text {
+                text: "✕"
+                anchors.centerIn: parent
+                font.pixelSize: 12
+                color: clearMouse.containsMouse ? 
+                    (typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa") : 
+                    Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.secondaryTextColor : "#a6adc8", 0.6)
+            }
+
+            MouseArea {
+                id: clearMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    textInput.text = ""
+                    textInput.forceActiveFocus()
+                }
+            }
+        }
     }
 
     function forceActiveFocus() {
         textInput.forceActiveFocus()
     }
 }
+

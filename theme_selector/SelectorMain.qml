@@ -1,15 +1,47 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import Quasar 1.0
 
 Window {
     id: window
-    width: 940
-    height: 620
+    width: 980
+    height: 660
     visible: true
-    title: "Quasar Theme Selector"
-    color: "#1e1e2e"
+    title: "Quasar Theme Selector & Designer"
+    color: "#11111b"
+
+    property string selectedCategory: "All"
+    property string searchFilter: ""
+    property string statusMessage: ""
+
+    FileDialog {
+        id: importDialog
+        title: "Import Theme JSON File"
+        nameFilters: ["JSON Theme Files (*.json)", "All Files (*)"]
+        onAccepted: {
+            if (ThemeManager.importTheme(selectedFile)) {
+                window.statusMessage = "Successfully imported theme from JSON!"
+            } else {
+                window.statusMessage = "Error importing theme file."
+            }
+        }
+    }
+
+    FileDialog {
+        id: exportDialog
+        title: "Export Current Theme JSON"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["JSON Theme Files (*.json)", "All Files (*)"]
+        onAccepted: {
+            if (ThemeManager.exportTheme(selectedFile)) {
+                window.statusMessage = "Theme exported successfully to JSON!"
+            } else {
+                window.statusMessage = "Error exporting theme file."
+            }
+        }
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -18,19 +50,103 @@ Window {
         // Left Panel - Settings Controls
         ScrollView {
             Layout.fillHeight: true
-            Layout.preferredWidth: 480
+            Layout.preferredWidth: 500
             clip: true
 
             ColumnLayout {
                 width: parent.width - 24
                 spacing: 14
 
-                Text {
-                    text: "Theme Presets"
-                    color: "#89b4fa"
-                    font.pixelSize: 16
-                    font.bold: true
+                RowLayout {
+                    Layout.fillWidth: true
                     Layout.topMargin: 12
+
+                    Text {
+                        text: "Theme Presets"
+                        color: "#89b4fa"
+                        font.pixelSize: 16
+                        font.bold: true
+                        Layout.fillWidth: true
+                    }
+
+                    Button {
+                        text: "Import JSON"
+                        onClicked: importDialog.open()
+                    }
+
+                    Button {
+                        text: "Export JSON"
+                        onClicked: exportDialog.open()
+                    }
+                }
+
+                // Preset Search Input
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 32
+                    color: "#181825"
+                    border.color: "#313244"
+                    radius: 6
+
+                    Row {
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        spacing: 6
+
+                        Text {
+                            text: "🔍"
+                            font.pixelSize: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        TextInput {
+                            id: searchInput
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 24
+                            color: "#cdd6f4"
+                            font.pixelSize: 12
+                            onTextChanged: window.searchFilter = text.toLowerCase()
+
+                            Text {
+                                text: "Filter presets by name..."
+                                color: "#6c7086"
+                                font.pixelSize: 12
+                                visible: !parent.text
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                    }
+                }
+
+                // Category Chips
+                Row {
+                    spacing: 6
+                    Repeater {
+                        model: ["All", "Dark", "Light", "Neon", "Retro"]
+                        delegate: Rectangle {
+                            width: chipText.implicitWidth + 16
+                            height: 26
+                            radius: 13
+                            color: window.selectedCategory === modelData ? "#8aadf4" : "#181825"
+                            border.color: window.selectedCategory === modelData ? "#8aadf4" : "#313244"
+
+                            Text {
+                                id: chipText
+                                anchors.centerIn: parent
+                                text: modelData
+                                color: window.selectedCategory === modelData ? "#11111b" : "#cdd6f4"
+                                font.pixelSize: 11
+                                font.bold: window.selectedCategory === modelData
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: window.selectedCategory = modelData
+                            }
+                        }
+                    }
                 }
 
                 Flow {
@@ -42,8 +158,14 @@ Window {
                         delegate: PresetButton {
                             presetName: modelData
                             isSelected: false
+                            visible: {
+                                var matchesCategory = (window.selectedCategory === "All" || ThemeManager.getPresetCategory(modelData) === window.selectedCategory)
+                                var matchesSearch = (window.searchFilter === "" || modelData.toLowerCase().indexOf(window.searchFilter) !== -1)
+                                return matchesCategory && matchesSearch
+                            }
                             onClicked: {
                                 ThemeManager.loadPreset(modelData)
+                                window.statusMessage = "Loaded preset: " + modelData
                             }
                         }
                     }
@@ -234,11 +356,22 @@ Window {
                 anchors.margins: 16
                 spacing: 12
 
-                Text {
-                    text: "Live Preview"
-                    color: "#89b4fa"
-                    font.pixelSize: 15
-                    font.bold: true
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text {
+                        text: "Live Interactive Preview"
+                        color: "#89b4fa"
+                        font.pixelSize: 15
+                        font.bold: true
+                        Layout.fillWidth: true
+                    }
+
+                    Text {
+                        text: window.statusMessage
+                        color: "#a6e3a1"
+                        font.pixelSize: 12
+                        visible: text.length > 0
+                    }
                 }
 
                 // Simulated Launcher Box
@@ -428,6 +561,7 @@ Window {
                     text: "Apply & Save Theme"
                     onClicked: {
                         ThemeManager.saveTheme()
+                        window.statusMessage = "Theme saved to ~/.config/quasar/theme.json"
                     }
                 }
             }

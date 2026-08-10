@@ -7,7 +7,7 @@ Item {
     // Screen overlay backdrop
     Rectangle {
         anchors.fill: parent
-        color: Qt.rgba(0, 0, 0, 0.4)
+        color: typeof ThemeManager !== "undefined" && ThemeManager.enableDimOverlay ? Qt.rgba(0, 0, 0, 0.4) : "transparent"
     }
 
     MouseArea {
