@@ -323,6 +323,7 @@ int FuzzyMatcher::score(int sourceRow) const {
     QString cleanQuery = m_query.trimmed();
     if (cleanQuery.startsWith("w:")) cleanQuery = cleanQuery.mid(2).trimmed();
     else if (cleanQuery.startsWith("window:")) cleanQuery = cleanQuery.mid(7).trimmed();
+    else if (cleanQuery.startsWith("/")) cleanQuery = cleanQuery.mid(1).trimmed();
     
     if (cleanQuery.isEmpty()) return 1000;
     
