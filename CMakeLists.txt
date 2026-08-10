@@ -76,6 +76,7 @@ target_link_libraries(quasar-theme-selector
     Qt6::Quick
     Qt6::Gui
     Qt6::QuickControls2
+    LayerShellQt::Interface
 )
 
 install(TARGETS quasar quasar-theme-selector

@@ -4,6 +4,9 @@
 #include <QIcon>
 #include <QQuickImageProvider>
 #include <QPixmap>
+#include <QWindow>
+#include <LayerShellQt/window.h>
+#include <LayerShellQt/shell.h>
 #include "thememanager.h"
 
 class IconProvider : public QQuickImageProvider
@@ -29,6 +32,8 @@ public:
 
 int main(int argc, char *argv[])
 {
+    LayerShellQt::Shell::useLayerShell();
+
     QGuiApplication app(argc, argv);
     app.setApplicationName("quasar-theme-selector");
     app.setDesktopFileName("quasar-theme-selector");
@@ -42,8 +47,22 @@ int main(int argc, char *argv[])
     const QUrl url(QStringLiteral("qrc:/com/quasar/themeselector/theme_selector/SelectorMain.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {
-        if (!obj && url == objUrl)
+        if (!obj && url == objUrl) {
             QCoreApplication::exit(-1);
+            return;
+        }
+
+        QWindow *window = qobject_cast<QWindow*>(obj);
+        if (window) {
+            LayerShellQt::Window *lsw = LayerShellQt::Window::get(window);
+            if (lsw) {
+                lsw->setLayer(LayerShellQt::Window::LayerOverlay);
+                lsw->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
+                lsw->setAnchors(LayerShellQt::Window::Anchors());
+            }
+            window->show();
+            window->requestActivate();
+        }
     }, Qt::QueuedConnection);
 
     engine.load(url);

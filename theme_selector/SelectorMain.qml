@@ -8,13 +8,20 @@ Window {
     id: window
     width: 820
     height: 540
-    visible: true
+    visible: false
     title: "Quasar Theme Studio & Customizer"
     color: "#11111b"
-    flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowSystemMenuHint
+    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+
+    Timer {
+        id: focusGuard
+        interval: 400
+        running: true
+        repeat: false
+    }
 
     onActiveChanged: {
-        if (!active && visible) {
+        if (!active && visible && !focusGuard.running) {
             window.close()
         }
     }
