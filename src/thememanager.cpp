@@ -133,6 +133,13 @@ QStringList ThemeManager::getAvailablePresets() const
         "Emerald Glass",
         "Solarized Gold",
         "Obsidian Velvet",
+        "Rofi Arc-Dark",
+        "Rofi DarkBlue",
+        "Rofi Monokai",
+        "Rofi Material",
+        "Rofi Indego",
+        "Rofi Adapta-Nokto",
+        "Rofi Solarized",
         "Dracula",
         "Gruvbox Dark",
         "Gruvbox Light",
@@ -160,7 +167,7 @@ QString ThemeManager::getPresetCategory(const QString &presetName) const
     if (presetName == "Synthwave '84" || presetName == "Cyberpunk 2077" || presetName == "Emerald Glass" || presetName == "Modern Glass") {
         return "Neon";
     }
-    if (presetName == "Rofi Classic") {
+    if (presetName.startsWith("Rofi")) {
         return "Retro";
     }
     return "Dark";
@@ -413,6 +420,139 @@ void ThemeManager::loadPreset(const QString &presetName)
         m_promptText = "obsidian: ";
         m_windowWidth = 660;
         m_windowHeight = 430;
+    } else if (presetName == "Rofi Arc-Dark") {
+        m_layoutMode = "list";
+        m_backgroundColor = "#2d303b";
+        m_bgOpacity = 0.95;
+        m_cardColor = "#383c4a";
+        m_cardOpacity = 0.95;
+        m_accentColor = "#5294e2";
+        m_textColor = "#f3f4f5";
+        m_secondaryTextColor = "#8c919b";
+        m_fontFamily = "Sans";
+        m_fontSize = 14;
+        m_borderRadius = 4;
+        m_borderWidth = 1;
+        m_borderColor = "#5294e2";
+        m_showIcons = true;
+        m_iconSize = 26;
+        m_promptText = "rofi: ";
+        m_windowWidth = 640;
+        m_windowHeight = 420;
+    } else if (presetName == "Rofi DarkBlue") {
+        m_layoutMode = "list";
+        m_backgroundColor = "#1d1f21";
+        m_bgOpacity = 0.95;
+        m_cardColor = "#2d303b";
+        m_cardOpacity = 0.95;
+        m_accentColor = "#4491ed";
+        m_textColor = "#c5c8c6";
+        m_secondaryTextColor = "#707880";
+        m_fontFamily = "Monospace";
+        m_fontSize = 14;
+        m_borderRadius = 6;
+        m_borderWidth = 1;
+        m_borderColor = "#4491ed";
+        m_showIcons = true;
+        m_iconSize = 26;
+        m_promptText = "blue: ";
+        m_windowWidth = 650;
+        m_windowHeight = 420;
+    } else if (presetName == "Rofi Monokai") {
+        m_layoutMode = "list";
+        m_backgroundColor = "#272822";
+        m_bgOpacity = 0.93;
+        m_cardColor = "#3e3d32";
+        m_cardOpacity = 0.95;
+        m_accentColor = "#a6e22e";
+        m_textColor = "#f8f8f2";
+        m_secondaryTextColor = "#75715e";
+        m_fontFamily = "Monospace";
+        m_fontSize = 14;
+        m_borderRadius = 6;
+        m_borderWidth = 1;
+        m_borderColor = "#e6db74";
+        m_showIcons = true;
+        m_iconSize = 26;
+        m_promptText = "monokai: ";
+        m_windowWidth = 640;
+        m_windowHeight = 420;
+    } else if (presetName == "Rofi Material") {
+        m_layoutMode = "list";
+        m_backgroundColor = "#263238";
+        m_bgOpacity = 0.95;
+        m_cardColor = "#37474f";
+        m_cardOpacity = 0.95;
+        m_accentColor = "#00bcd4";
+        m_textColor = "#eceff1";
+        m_secondaryTextColor = "#90a4ae";
+        m_fontFamily = "Sans";
+        m_fontSize = 14;
+        m_borderRadius = 8;
+        m_borderWidth = 1;
+        m_borderColor = "#00bcd4";
+        m_showIcons = true;
+        m_iconSize = 28;
+        m_promptText = "material: ";
+        m_windowWidth = 650;
+        m_windowHeight = 420;
+    } else if (presetName == "Rofi Indego") {
+        m_layoutMode = "list";
+        m_backgroundColor = "#1a1c23";
+        m_bgOpacity = 0.95;
+        m_cardColor = "#252834";
+        m_cardOpacity = 0.95;
+        m_accentColor = "#6c71c4";
+        m_textColor = "#e0e6ed";
+        m_secondaryTextColor = "#5b6275";
+        m_fontFamily = "Sans";
+        m_fontSize = 14;
+        m_borderRadius = 10;
+        m_borderWidth = 1;
+        m_borderColor = "#6c71c4";
+        m_showIcons = true;
+        m_iconSize = 28;
+        m_promptText = "indego: ";
+        m_windowWidth = 650;
+        m_windowHeight = 430;
+    } else if (presetName == "Rofi Adapta-Nokto") {
+        m_layoutMode = "list";
+        m_backgroundColor = "#222d32";
+        m_bgOpacity = 0.95;
+        m_cardColor = "#263238";
+        m_cardOpacity = 0.95;
+        m_accentColor = "#00bcd4";
+        m_textColor = "#cfd8dc";
+        m_secondaryTextColor = "#78909c";
+        m_fontFamily = "Sans";
+        m_fontSize = 14;
+        m_borderRadius = 6;
+        m_borderWidth = 1;
+        m_borderColor = "#00bcd4";
+        m_showIcons = true;
+        m_iconSize = 26;
+        m_promptText = "adapta: ";
+        m_windowWidth = 640;
+        m_windowHeight = 420;
+    } else if (presetName == "Rofi Solarized") {
+        m_layoutMode = "list";
+        m_backgroundColor = "#002b36";
+        m_bgOpacity = 0.95;
+        m_cardColor = "#073642";
+        m_cardOpacity = 0.95;
+        m_accentColor = "#268bd2";
+        m_textColor = "#839496";
+        m_secondaryTextColor = "#586e75";
+        m_fontFamily = "Sans";
+        m_fontSize = 14;
+        m_borderRadius = 6;
+        m_borderWidth = 1;
+        m_borderColor = "#268bd2";
+        m_showIcons = true;
+        m_iconSize = 26;
+        m_promptText = "rofi-solar: ";
+        m_windowWidth = 640;
+        m_windowHeight = 420;
     } else if (presetName == "Dracula") {
         m_layoutMode = "list";
         m_backgroundColor = "#282a36";

@@ -6,8 +6,8 @@ Rectangle {
     property bool isSelected: false
     signal clicked()
 
-    width: Math.max(130, labelText.implicitWidth + 24)
-    height: 36
+    width: visible ? Math.max(130, labelText.implicitWidth + 24) : 0
+    height: visible ? 36 : 0
     radius: 8
     color: isSelected ? "#8aadf4" : (mouseArea.containsMouse ? "#313244" : "#181825")
     border.color: isSelected ? "#8aadf4" : "#313244"

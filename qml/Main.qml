@@ -8,10 +8,8 @@ Window {
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
-    property bool dimOverlay: typeof ThemeManager !== "undefined" && ThemeManager.enableDimOverlay
-
-    width: dimOverlay ? Screen.width : container.width
-    height: dimOverlay ? Screen.height : container.height
+    width: typeof ThemeManager !== "undefined" ? ThemeManager.windowWidth : 640
+    height: typeof ThemeManager !== "undefined" ? ThemeManager.windowHeight : 420
 
     onActiveChanged: {
         if (!active && visible) {
@@ -33,19 +31,10 @@ Window {
         onActivated: root.hide()
     }
 
-    // Dark backdrop overlay (only active if dimOverlay is true)
-    GlassBackground {
-        anchors.fill: parent
-        visible: root.dimOverlay
-        onBackgroundClicked: root.hide()
-    }
-
-    // Main Rofi Window Container (Centered compact box)
+    // Main Rofi Window Container (Compact floating box)
     Rectangle {
         id: container
-        width: typeof ThemeManager !== "undefined" ? ThemeManager.windowWidth : 640
-        height: typeof ThemeManager !== "undefined" ? ThemeManager.windowHeight : 420
-        anchors.centerIn: root.dimOverlay ? parent : undefined
+        anchors.fill: parent
         radius: typeof ThemeManager !== "undefined" ? ThemeManager.borderRadius : 8
 
         color: Qt.alpha(

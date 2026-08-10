@@ -209,25 +209,12 @@ int main(int argc, char *argv[])
             qDebug() << "rootWindow is successfully casted. Setting up LayerShellQt.";
             LayerShellQt::Window *lsWindow = LayerShellQt::Window::get(rootWindow);
             if (lsWindow) {
-                lsWindow->setLayer(LayerShellQt::Window::LayerOverlay);
-                bool dim = ThemeManager::instance()->enableDimOverlay();
-                if (dim) {
-                    lsWindow->setAnchors(LayerShellQt::Window::Anchors(
-                                         LayerShellQt::Window::AnchorLeft | 
-                                         LayerShellQt::Window::AnchorRight | 
-                                         LayerShellQt::Window::AnchorTop | 
-                                         LayerShellQt::Window::AnchorBottom));
-                } else {
-                    lsWindow->setAnchors(LayerShellQt::Window::Anchors(0));
-                }
-                if (dim) {
-                    lsWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
-                } else {
-                    lsWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
-                }
+                lsWindow->setLayer(LayerShellQt::Window::LayerTop);
+                lsWindow->setAnchors(LayerShellQt::Window::Anchors(0));
+                lsWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
                 lsWindow->setExclusiveZone(-1);
                 lsWindow->setScope(QStringLiteral("quasar"));
-                qDebug() << "LayerShellQt successfully configured. Dim overlay:" << dim;
+                qDebug() << "LayerShellQt successfully configured on LayerTop.";
             }
 
             // If not run with --toggle, show the launcher immediately once loaded
