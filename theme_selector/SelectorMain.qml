@@ -605,11 +605,33 @@ Window {
                 anchors.margins: 16
                 spacing: 12
 
-                Text {
-                    text: "LIVE LAUNCHER PREVIEW"
-                    color: "#89b4fa"
-                    font.pixelSize: 12
-                    font.bold: true
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text {
+                        text: "LIVE LAUNCHER PREVIEW"
+                        color: "#89b4fa"
+                        font.pixelSize: 12
+                        font.bold: true
+                        Layout.fillWidth: true
+                    }
+                    Rectangle {
+                        width: 24; height: 24; radius: 12
+                        color: closeMouse.containsMouse ? "#f38ba8" : "#313244"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "✕"
+                            color: closeMouse.containsMouse ? "#11111b" : "#cdd6f4"
+                            font.pixelSize: 12
+                            font.bold: true
+                        }
+                        MouseArea {
+                            id: closeMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: window.close()
+                        }
+                    }
                 }
 
                 // Interactive Live Preview Container
