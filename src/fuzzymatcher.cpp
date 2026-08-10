@@ -99,6 +99,86 @@ int FuzzyMatcher::calculateScore(const QString &textStr, const QString &patternS
     return res <= -5000 ? 0 : std::max(1, res);
 }
 
+static QString convertRuToEn(const QString &input) {
+    static const QHash<QChar, QChar> ruToEn = {
+        {u'й', 'q'}, {u'ц', 'w'}, {u'у', 'e'}, {u'к', 'r'}, {u'е', 't'}, {u'н', 'y'}, {u'г', 'u'}, {u'ш', 'i'}, {u'щ', 'o'}, {u'з', 'p'}, {u'х', '['}, {u'ъ', ']'},
+        {u'ф', 'a'}, {u'ы', 's'}, {u'в', 'd'}, {u'а', 'f'}, {u'п', 'g'}, {u'р', 'h'}, {u'о', 'j'}, {u'л', 'k'}, {u'д', 'l'}, {u'ж', ';'}, {u'э', '\''},
+        {u'я', 'z'}, {u'ч', 'x'}, {u'с', 'c'}, {u'м', 'v'}, {u'и', 'b'}, {u'т', 'n'}, {u'ь', 'm'}, {u'б', ','}, {u'ю', '.'},
+        {u'Й', 'Q'}, {u'Ц', 'W'}, {u'У', 'E'}, {u'К', 'R'}, {u'Е', 'T'}, {u'Н', 'Y'}, {u'Г', 'U'}, {u'Ш', 'I'}, {u'Щ', 'O'}, {u'З', 'P'}, {u'Х', '{'}, {u'Ъ', '}'},
+        {u'Ф', 'A'}, {u'Ы', 'S'}, {u'В', 'D'}, {u'А', 'F'}, {u'П', 'G'}, {u'Р', 'H'}, {u'О', 'J'}, {u'Л', 'K'}, {u'Д', 'L'}, {u'Ж', ':'}, {u'Э', '"'},
+        {u'Я', 'Z'}, {u'Ч', 'X'}, {u'С', 'C'}, {u'М', 'V'}, {u'И', 'B'}, {u'Т', 'N'}, {u'Ь', 'M'}, {u'Б', '<'}, {u'Ю', '>'}
+    };
+
+    QString result;
+    result.reserve(input.length());
+    for (QChar c : input) {
+        if (ruToEn.contains(c)) {
+            result.append(ruToEn.value(c));
+        } else {
+            result.append(c);
+        }
+    }
+    return result;
+}
+
+static int matchSingleQuery(const QString &name, const QString &genericName, const QString &comment, const QString &query) {
+    if (query.isEmpty()) return 1;
+
+    QString qLower = query.toLower();
+    QString nLower = name.toLower();
+    QString gLower = genericName.toLower();
+    QString cLower = comment.toLower();
+
+    int finalScore = 0;
+
+    // 1. Direct Name Prefix Match (HIGHEST PRIORITY: 100,000+)
+    if (nLower.startsWith(qLower)) {
+        finalScore = 100000 + (1000 - name.length());
+    }
+    // 2. Word Boundary Prefix Match in Name
+    else {
+        QStringList words = nLower.split(QRegularExpression("[\\s\\-_]+"));
+        bool wordMatch = false;
+        for (int i = 1; i < words.size(); ++i) {
+            if (words[i].startsWith(qLower)) {
+                finalScore = 50000 + (1000 - name.length()) - (i * 10);
+                wordMatch = true;
+                break;
+            }
+        }
+        
+        if (!wordMatch) {
+            // 3. Exact Substring Match in Name
+            int pos = nLower.indexOf(qLower);
+            if (pos != -1) {
+                finalScore = 10000 + (1000 - pos * 10 - name.length());
+            }
+            // 4. Prefix Match in GenericName or Comment
+            else if (gLower.startsWith(qLower) || cLower.startsWith(qLower)) {
+                finalScore = 5000;
+            }
+            // 5. Substring Match in GenericName or Comment
+            else if (gLower.contains(qLower) || cLower.contains(qLower)) {
+                finalScore = 2000;
+            }
+            // 6. Subsequence Fuzzy Match
+            else {
+                int qIdx = 0;
+                int qLen = qLower.length();
+                for (int i = 0; i < nLower.length() && qIdx < qLen; ++i) {
+                    if (nLower[i] == qLower[qIdx]) {
+                        qIdx++;
+                    }
+                }
+                if (qIdx == qLen) {
+                    finalScore = 1000 + (100 - name.length());
+                }
+            }
+        }
+    }
+    return finalScore;
+}
+
 int FuzzyMatcher::score(int sourceRow) const {
     if (m_query.isEmpty()) return 1;
     
@@ -117,49 +197,11 @@ int FuzzyMatcher::score(int sourceRow) const {
         return 0;
     }
 
-    QString qLower = m_query.toLower();
-    QString nLower = name.toLower();
+    int scoreOrig = matchSingleQuery(name, genericName, comment, m_query);
+    QString translatedQuery = convertRuToEn(m_query);
+    int scoreTrans = (translatedQuery != m_query) ? matchSingleQuery(name, genericName, comment, translatedQuery) : 0;
 
-    int finalScore = 0;
-
-    // 1. Direct Name Prefix Match (HIGHEST PRIORITY: 100,000+)
-    if (nLower.startsWith(qLower)) {
-        finalScore = 100000 + (1000 - name.length());
-    }
-    // 2. Word Boundary Prefix Match in Name (e.g. "Theme Selector" matches "Sel" -> 50,000+)
-    else {
-        QStringList words = nLower.split(QRegularExpression("[\\s\\-_]+"));
-        bool wordMatch = false;
-        for (int i = 1; i < words.size(); ++i) {
-            if (words[i].startsWith(qLower)) {
-                finalScore = 50000 + (1000 - name.length()) - (i * 10);
-                wordMatch = true;
-                break;
-            }
-        }
-        
-        if (!wordMatch) {
-            // 3. Exact Substring Match in Name (e.g. "Chromium" for "ro" -> 10,000+)
-            int pos = nLower.indexOf(qLower);
-            if (pos != -1) {
-                finalScore = 10000 + (1000 - pos * 10 - name.length());
-            }
-            // 4. Prefix Match in GenericName or Comment (5,000+)
-            else if (genericName.toLower().startsWith(qLower) || comment.toLower().startsWith(qLower)) {
-                finalScore = 5000;
-            }
-            // 5. Substring Match in GenericName or Comment (2,000+)
-            else if (genericName.toLower().contains(qLower) || comment.toLower().contains(qLower)) {
-                finalScore = 2000;
-            }
-            // 6. Subsequence Fuzzy Match
-            else {
-                int s = calculateScore(name, m_query);
-                if (s > 0) finalScore = s;
-            }
-        }
-    }
-    
+    int finalScore = std::max(scoreOrig, scoreTrans);
     m_scoreCache[sourceRow] = finalScore;
     return finalScore;
 }
@@ -167,22 +209,30 @@ int FuzzyMatcher::score(int sourceRow) const {
 QString FuzzyMatcher::formatHighlightedName(const QString &name, const QString &query) const {
     if (query.isEmpty()) return name.toHtmlEscaped();
 
-    QString qLower = query.toLower();
+    QString activeQuery = query;
+    if (matchSingleQuery(name, QString(), QString(), activeQuery) == 0) {
+        QString trans = convertRuToEn(query);
+        if (matchSingleQuery(name, QString(), QString(), trans) > 0) {
+            activeQuery = trans;
+        }
+    }
+
+    QString qLower = activeQuery.toLower();
     QString nLower = name.toLower();
 
     int pos = nLower.indexOf(qLower);
     if (pos != -1) {
         QString before = name.left(pos).toHtmlEscaped();
-        QString matched = name.mid(pos, query.length()).toHtmlEscaped();
-        QString after = name.mid(pos + query.length()).toHtmlEscaped();
+        QString matched = name.mid(pos, activeQuery.length()).toHtmlEscaped();
+        QString after = name.mid(pos + activeQuery.length()).toHtmlEscaped();
         return QString("%1<u>%2</u>%3").arg(before, matched, after);
     }
 
     QString result;
     int qIdx = 0;
-    int qLen = query.length();
+    int qLen = activeQuery.length();
     for (int i = 0; i < name.length(); ++i) {
-        if (qIdx < qLen && name[i].toLower() == query[qIdx].toLower()) {
+        if (qIdx < qLen && name[i].toLower() == activeQuery[qIdx].toLower()) {
             result += QString("<u>%1</u>").arg(QString(name[i]).toHtmlEscaped());
             qIdx++;
         } else {
