@@ -49,12 +49,14 @@ Window {
 
         // Left Panel - Settings Controls
         ScrollView {
+            id: settingsScroll
             Layout.fillHeight: true
-            Layout.preferredWidth: 500
+            Layout.preferredWidth: 520
             clip: true
+            contentWidth: availableWidth
 
             ColumnLayout {
-                width: parent.width - 24
+                width: settingsScroll.availableWidth - 20
                 spacing: 14
 
                 RowLayout {
@@ -150,8 +152,9 @@ Window {
                 }
 
                 Flow {
-                    width: parent.width
+                    id: presetsFlow
                     Layout.fillWidth: true
+                    implicitHeight: childrenRect.height
                     spacing: 8
 
                     Repeater {
