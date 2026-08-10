@@ -54,6 +54,40 @@ QVariantList WindowSwitcher::getOpenWindows()
     return windows;
 }
 
+QVariantList WindowSwitcher::getMatchingWindows(const QString &query)
+{
+    QVariantList all = getOpenWindows();
+    if (query.trimmed().isEmpty()) {
+        return all;
+    }
+
+    QString cleanQuery = query.trimmed();
+    if (cleanQuery.startsWith("w:")) {
+        cleanQuery = cleanQuery.mid(2).trimmed();
+    } else if (cleanQuery.startsWith("window:")) {
+        cleanQuery = cleanQuery.mid(7).trimmed();
+    }
+
+    if (cleanQuery.isEmpty()) {
+        return all;
+    }
+
+    QVariantList filtered;
+    for (const QVariant &var : all) {
+        QVariantMap map = var.toMap();
+        QString title = map["title"].toString();
+        QString cls = map["class"].toString();
+        QString workspace = map["workspace"].toString();
+
+        if (title.contains(cleanQuery, Qt::CaseInsensitive) ||
+            cls.contains(cleanQuery, Qt::CaseInsensitive) ||
+            workspace.contains(cleanQuery, Qt::CaseInsensitive)) {
+            filtered.append(map);
+        }
+    }
+    return filtered;
+}
+
 bool WindowSwitcher::focusWindow(const QString &address)
 {
     if (address.isEmpty()) return false;

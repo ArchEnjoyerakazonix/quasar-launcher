@@ -133,6 +133,7 @@ QStringList ThemeManager::getAvailablePresets() const
         "Emerald Glass",
         "Solarized Gold",
         "Obsidian Velvet",
+        "Rofi Leylin",
         "Rofi Arc-Dark",
         "Rofi DarkBlue",
         "Rofi Monokai",
@@ -420,6 +421,25 @@ void ThemeManager::loadPreset(const QString &presetName)
         m_promptText = "obsidian: ";
         m_windowWidth = 660;
         m_windowHeight = 430;
+    } else if (presetName == "Rofi Leylin") {
+        m_layoutMode = "list";
+        m_backgroundColor = "#0f121d";
+        m_bgOpacity = 0.94;
+        m_cardColor = "#181b28";
+        m_cardOpacity = 0.95;
+        m_accentColor = "#dcd8a2";
+        m_textColor = "#e3e4d5";
+        m_secondaryTextColor = "#7a8194";
+        m_fontFamily = "Monospace";
+        m_fontSize = 14;
+        m_borderRadius = 4;
+        m_borderWidth = 1;
+        m_borderColor = "#586075";
+        m_showIcons = false;
+        m_iconSize = 24;
+        m_promptText = "window: ";
+        m_windowWidth = 660;
+        m_windowHeight = 420;
     } else if (presetName == "Rofi Arc-Dark") {
         m_layoutMode = "list";
         m_backgroundColor = "#2d303b";

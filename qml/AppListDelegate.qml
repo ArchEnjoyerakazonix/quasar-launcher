@@ -46,7 +46,9 @@ Item {
                 height: width
                 anchors.verticalCenter: parent.verticalCenter
                 visible: typeof ThemeManager !== "undefined" ? ThemeManager.showIcons : true
-                source: model.iconName ? "image://icon/" + model.iconName : ""
+                source: (typeof modelData !== "undefined" && modelData && modelData.class) ? 
+                    ("image://icon/" + modelData.class.toLowerCase()) : 
+                    (model.iconName ? "image://icon/" + model.iconName : "")
                 sourceSize: Qt.size(width, height)
                 fillMode: Image.PreserveAspectFit
                 asynchronous: true
@@ -54,10 +56,12 @@ Item {
 
             Text {
                 id: appName
-                text: model.highlightedName || model.name || ""
+                text: (typeof modelData !== "undefined" && modelData && modelData.title) ? 
+                    modelData.title : 
+                    (model.highlightedName || model.name || "")
                 textFormat: Text.StyledText
                 color: (mouseArea.containsMouse || isCurrentItem) ? 
-                    "#ffffff" : 
+                    ((typeof ThemeManager !== "undefined" && (ThemeManager.accentColor === "#dcd8a2" || ThemeManager.accentColor === "#b58900" || ThemeManager.accentColor === "#e6db74")) ? "#101424" : "#ffffff") : 
                     (typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4")
                 font.pixelSize: typeof ThemeManager !== "undefined" ? ThemeManager.fontSize : 14
                 font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
@@ -69,14 +73,16 @@ Item {
 
             Text {
                 id: commentText
-                text: model.genericName || model.comment || ""
+                text: (typeof modelData !== "undefined" && modelData && modelData.class) ? 
+                    (modelData.class + (modelData.workspace ? " | Workspace " + modelData.workspace : "")) : 
+                    (model.genericName || model.comment || "")
                 color: (mouseArea.containsMouse || isCurrentItem) ? 
-                    Qt.alpha("#ffffff", 0.75) : 
+                    ((typeof ThemeManager !== "undefined" && (ThemeManager.accentColor === "#dcd8a2" || ThemeManager.accentColor === "#b58900" || ThemeManager.accentColor === "#e6db74")) ? Qt.alpha("#101424", 0.8) : Qt.alpha("#ffffff", 0.75)) : 
                     Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.secondaryTextColor : "#a6adc8", 0.7)
                 font.pixelSize: (typeof ThemeManager !== "undefined" ? ThemeManager.fontSize : 14) - 2
                 font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
                 anchors.verticalCenter: parent.verticalCenter
-                visible: text.length > 0 && parent.width > 380
+                visible: text.length > 0 && parent.width > 350
                 elide: Text.ElideRight
             }
         }

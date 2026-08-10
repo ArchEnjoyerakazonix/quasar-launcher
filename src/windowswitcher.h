@@ -13,6 +13,7 @@ public:
     explicit WindowSwitcher(QObject *parent = nullptr);
 
     Q_INVOKABLE QVariantList getOpenWindows();
+    Q_INVOKABLE QVariantList getMatchingWindows(const QString &query);
     Q_INVOKABLE bool focusWindow(const QString &address);
 };
 
