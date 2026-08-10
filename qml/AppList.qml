@@ -151,8 +151,15 @@ Item {
         Keys.onReturnPressed: {
             if (list.currentIndex >= 0 && list.currentIndex < list.count) {
                 var itemModel = list.model.index(list.currentIndex, 0)
-                var execStr = list.model.data(itemModel, 259) // ExecRole
-                var desktopFileStr = list.model.data(itemModel, 262) // DesktopFileRole
+                var roles = list.model.roleNames ? list.model.roleNames() : {}
+                var execRole = 260
+                var desktopRole = 263
+                for (var r in roles) {
+                    if (roles[r] === "exec") execRole = parseInt(r)
+                    if (roles[r] === "desktopFile") desktopRole = parseInt(r)
+                }
+                var execStr = list.model.data(itemModel, execRole)
+                var desktopFileStr = list.model.data(itemModel, desktopRole)
                 root.launchApp(execStr || "", desktopFileStr || "")
             } else if (root.query.length > 0) {
                 root.launchApp(root.query, "")

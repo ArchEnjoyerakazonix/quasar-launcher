@@ -46,9 +46,7 @@ Item {
 
             Text {
                 id: appName
-                text: (mouseArea.containsMouse || isCurrentItem) ? 
-                    (model.name || "") : 
-                    (model.highlightedName || model.name || "")
+                text: model.highlightedName || model.name || ""
                 textFormat: Text.StyledText
                 color: (mouseArea.containsMouse || isCurrentItem) ? 
                     "#ffffff" : 

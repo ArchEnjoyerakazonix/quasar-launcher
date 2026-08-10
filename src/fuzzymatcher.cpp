@@ -165,17 +165,17 @@ int FuzzyMatcher::score(int sourceRow) const {
 }
 
 QString FuzzyMatcher::formatHighlightedName(const QString &name, const QString &query) const {
-    if (query.isEmpty()) return name;
+    if (query.isEmpty()) return name.toHtmlEscaped();
 
     QString qLower = query.toLower();
     QString nLower = name.toLower();
 
     int pos = nLower.indexOf(qLower);
     if (pos != -1) {
-        QString before = name.left(pos);
-        QString matched = name.mid(pos, query.length());
-        QString after = name.mid(pos + query.length());
-        return QString("%1<u><font color=\"#8aadf4\">%2</font></u>%3").arg(before, matched, after);
+        QString before = name.left(pos).toHtmlEscaped();
+        QString matched = name.mid(pos, query.length()).toHtmlEscaped();
+        QString after = name.mid(pos + query.length()).toHtmlEscaped();
+        return QString("%1<u>%2</u>%3").arg(before, matched, after);
     }
 
     QString result;
@@ -183,10 +183,10 @@ QString FuzzyMatcher::formatHighlightedName(const QString &name, const QString &
     int qLen = query.length();
     for (int i = 0; i < name.length(); ++i) {
         if (qIdx < qLen && name[i].toLower() == query[qIdx].toLower()) {
-            result += QString("<u><font color=\"#8aadf4\">%1</font></u>").arg(name[i]);
+            result += QString("<u>%1</u>").arg(QString(name[i]).toHtmlEscaped());
             qIdx++;
         } else {
-            result += name[i];
+            result += QString(name[i]).toHtmlEscaped();
         }
     }
     return result;
