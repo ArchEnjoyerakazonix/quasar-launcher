@@ -44,10 +44,9 @@ private:
     int m_categoriesRole = -1;
     int m_keywordsRole = -1;
     int m_desktopFileRole = -1;
-    int m_frecencyRole = -1;
+    bool m_corpusHasCyrillic = false;
 
     void updateRoleKeys();
     int score(int sourceRow) const;
-    int calculateScore(const QString &textStr, const QString &patternStr) const;
     QString formatHighlightedName(const QString &name, const QString &query) const;
 };

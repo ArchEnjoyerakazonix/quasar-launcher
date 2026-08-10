@@ -94,10 +94,10 @@ public:
 
 int main(int argc, char *argv[])
 {
+    LayerShellQt::Shell::useLayerShell();
     const QString dbusServiceName = "com.quasar.launcher";
 
     QGuiApplication app(argc, argv);
-    LayerShellQt::Shell::useLayerShell();
     app.setApplicationName("quasar");
     app.setOrganizationName("com.quasar");
 

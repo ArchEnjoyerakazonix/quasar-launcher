@@ -28,6 +28,8 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         clip: true
 
+        reuseItems: true
+        cacheBuffer: 300
         highlightFollowsCurrentItem: true
         highlightMoveDuration: 200
         

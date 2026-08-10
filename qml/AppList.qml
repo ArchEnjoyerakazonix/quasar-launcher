@@ -31,6 +31,8 @@ Item {
         flickDeceleration: 1500
         boundsBehavior: Flickable.StopAtBounds
 
+        reuseItems: true
+        cacheBuffer: 300
         highlightFollowsCurrentItem: true
         highlightMoveDuration: 100
 

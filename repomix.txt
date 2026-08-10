@@ -1,5 +1,5 @@
 ================================================================
-QUASAR LAUNCHER CODEBASE REPOMIX (v2 AUDIT FIXES)
+QUASAR LAUNCHER CODEBASE REPOMIX (v3 AUDIT FIXES)
 ================================================================
 
 --- File: CMakeLists.txt ---
@@ -188,10 +188,10 @@ public:
 
 int main(int argc, char *argv[])
 {
+    LayerShellQt::Shell::useLayerShell();
     const QString dbusServiceName = "com.quasar.launcher";
 
     QGuiApplication app(argc, argv);
-    LayerShellQt::Shell::useLayerShell();
     app.setApplicationName("quasar");
     app.setOrganizationName("com.quasar");
 
@@ -673,11 +673,10 @@ private:
     int m_categoriesRole = -1;
     int m_keywordsRole = -1;
     int m_desktopFileRole = -1;
-    int m_frecencyRole = -1;
+    bool m_corpusHasCyrillic = false;
 
     void updateRoleKeys();
     int score(int sourceRow) const;
-    int calculateScore(const QString &textStr, const QString &patternStr) const;
     QString formatHighlightedName(const QString &name, const QString &query) const;
 };
 
@@ -707,7 +706,7 @@ void FuzzyMatcher::setQuery(const QString &newQuery) {
         return;
     m_query = newQuery;
     m_scoreCache.clear();
-    invalidate();
+    invalidateFilter();
     sort(0, Qt::AscendingOrder);
     emit queryChanged();
 }
@@ -715,10 +714,22 @@ void FuzzyMatcher::setQuery(const QString &newQuery) {
 void FuzzyMatcher::setSourceModel(QAbstractItemModel *sourceModel) {
     QSortFilterProxyModel::setSourceModel(sourceModel);
     updateRoleKeys();
+    if (sourceModel) {
+        connect(sourceModel, &QAbstractItemModel::modelReset, this, [this]() {
+            m_scoreCache.clear();
+            updateRoleKeys();
+            invalidateFilter();
+        });
+        connect(sourceModel, &QAbstractItemModel::dataChanged, this, [this]() {
+            m_scoreCache.clear();
+            invalidateFilter();
+        });
+    }
 }
 
 void FuzzyMatcher::updateRoleKeys() {
     if (!sourceModel()) return;
+    m_corpusHasCyrillic = false;
     QHash<int, QByteArray> roles = sourceModel()->roleNames();
     for (auto it = roles.begin(); it != roles.end(); ++it) {
         if (it.value() == "name") m_nameRole = it.key();
@@ -728,63 +739,29 @@ void FuzzyMatcher::updateRoleKeys() {
         else if (it.value() == "categories") m_categoriesRole = it.key();
         else if (it.value() == "keywords") m_keywordsRole = it.key();
         else if (it.value() == "desktopFile") m_desktopFileRole = it.key();
-        else if (it.value() == "frecency") m_frecencyRole = it.key();
+    }
+    int rows = sourceModel()->rowCount();
+    for (int i = 0; i < rows; ++i) {
+        QString name = m_nameRole != -1 ? sourceModel()->data(sourceModel()->index(i, 0), m_nameRole).toString() : QString();
+        for (QChar c : name) {
+            ushort u = c.unicode();
+            if (u >= 0x0400 && u <= 0x04FF) {
+                m_corpusHasCyrillic = true;
+                break;
+            }
+        }
+        if (m_corpusHasCyrillic) break;
     }
 }
 
-int FuzzyMatcher::calculateScore(const QString &textStr, const QString &patternStr) const {
-    if (patternStr.isEmpty()) return 1;
-    if (textStr.isEmpty()) return 0;
-    
-    int m = patternStr.length();
-    int n = textStr.length();
-    
-    std::vector<std::vector<std::array<int, 2>>> memo(m, std::vector<std::array<int, 2>>(n, {-10000, -10000}));
-    
-    std::function<int(int, int, bool)> solve = [&](int pIdx, int tIdx, bool prevMatched) -> int {
-        if (pIdx == m) return 0;
-        if (tIdx == n) return -10000;
-        
-        int pM = prevMatched ? 1 : 0;
-        if (memo[pIdx][tIdx][pM] != -10000) {
-            return memo[pIdx][tIdx][pM];
-        }
-        
-        int score = solve(pIdx, tIdx + 1, false);
-        if (score != -10000) {
-            score -= 1;
-        }
-        
-        if (patternStr[pIdx].toLower() == textStr[tIdx].toLower()) {
-            int matchScore = 1;
-            if (pIdx == 0 && tIdx == 0) {
-                matchScore += 100;
-            }
-            if (tIdx > 0) {
-                QChar prev = textStr[tIdx - 1];
-                QChar curr = textStr[tIdx];
-                if (prev.isSpace() || prev == '-' || prev == '_') {
-                    matchScore += 8;
-                } else if (prev.isLower() && curr.isUpper()) {
-                    matchScore += 6;
-                }
-            }
-            if (prevMatched) {
-                matchScore += 10;
-            }
-            
-            int restScore = solve(pIdx + 1, tIdx + 1, true);
-            if (restScore != -10000) {
-                score = std::max(score, matchScore + restScore);
-            }
-        }
-        
-        memo[pIdx][tIdx][pM] = score;
-        return score;
-    };
-    
-    int res = solve(0, 0, false);
-    return res <= -5000 ? 0 : std::max(1, res);
+static bool isPureLatin(const QString &str) {
+    for (QChar c : str) {
+        ushort u = c.unicode();
+        if ((u >= 'a' && u <= 'z') || (u >= 'A' && u <= 'Z') || u == '[' || u == ']' || u == ';' || u == '\'' || u == ',' || u == '.') continue;
+        if (c.isSpace() || c.isDigit()) continue;
+        return false;
+    }
+    return true;
 }
 
 static QString convertRuToEn(const QString &input) {
@@ -1011,8 +988,13 @@ int FuzzyMatcher::score(int sourceRow) const {
     QString qwertTrans = convertRuToEn(m_query);
     int scoreQwerty = (qwertTrans != m_query) ? matchSingleQuery(name, genericName, comment, exec, keywords, qwertTrans) : 0;
 
-    QString enToRuTrans = convertEnToRu(m_query);
-    int scoreEnToRu = (enToRuTrans != m_query) ? matchSingleQuery(name, genericName, comment, exec, keywords, enToRuTrans) : 0;
+    int scoreEnToRu = 0;
+    if (m_corpusHasCyrillic && isPureLatin(m_query)) {
+        QString enToRuTrans = convertEnToRu(m_query);
+        if (enToRuTrans != m_query) {
+            scoreEnToRu = matchSingleQuery(name, genericName, comment, exec, keywords, enToRuTrans);
+        }
+    }
 
     QString mnemonTrans = convertRuToEnMnemonic(m_query);
     int scoreMnemonic = (mnemonTrans != m_query && mnemonTrans != qwertTrans) ? matchSingleQuery(name, genericName, comment, exec, keywords, mnemonTrans) : 0;
@@ -1041,6 +1023,15 @@ QString FuzzyMatcher::formatHighlightedName(const QString &name, const QString &
     if (sQ > bestScore) {
         bestScore = sQ;
         activeQuery = qwertTrans;
+    }
+
+    if (m_corpusHasCyrillic && isPureLatin(query)) {
+        QString enToRuTrans = convertEnToRu(query);
+        int sE = (enToRuTrans != query) ? matchSingleQuery(name, QString(), QString(), QString(), QStringList(), enToRuTrans) : 0;
+        if (sE > bestScore) {
+            bestScore = sE;
+            activeQuery = enToRuTrans;
+        }
     }
 
     QString mnemonTrans = convertRuToEnMnemonic(query);
@@ -1112,13 +1103,6 @@ bool FuzzyMatcher::lessThan(const QModelIndex &source_left, const QModelIndex &s
     
     if (scoreL != scoreR) {
         return scoreL > scoreR;
-    }
-    
-    double frecencyL = m_frecencyRole != -1 ? sourceModel()->data(source_left, m_frecencyRole).toDouble() : 0.0;
-    double frecencyR = m_frecencyRole != -1 ? sourceModel()->data(source_right, m_frecencyRole).toDouble() : 0.0;
-    
-    if (frecencyL != frecencyR) {
-        return frecencyL > frecencyR;
     }
     
     QString nameLeft = m_nameRole != -1 ? sourceModel()->data(source_left, m_nameRole).toString() : QString();
@@ -1933,6 +1917,8 @@ Item {
         flickDeceleration: 1500
         boundsBehavior: Flickable.StopAtBounds
 
+        reuseItems: true
+        cacheBuffer: 300
         highlightFollowsCurrentItem: true
         highlightMoveDuration: 100
 
@@ -2141,6 +2127,8 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         clip: true
 
+        reuseItems: true
+        cacheBuffer: 300
         highlightFollowsCurrentItem: true
         highlightMoveDuration: 200
         
