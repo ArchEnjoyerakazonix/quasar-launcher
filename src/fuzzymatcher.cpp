@@ -35,11 +35,13 @@ void FuzzyMatcher::setQuery(const QString &newQuery) {
     if (m_query == newQuery)
         return;
     m_query = newQuery;
+    m_scoreCache.clear();
 
     QString trimmed = m_query.trimmed();
     bool isWindowQuery = trimmed.startsWith("w:") || trimmed.startsWith("window:");
     bool isActionQuery = trimmed.startsWith("/");
 
+    beginResetModel();
     if (isWindowQuery && m_windowModel) {
         if (auto *winModel = qobject_cast<WindowListModel*>(m_windowModel)) {
             winModel->refresh();
@@ -60,6 +62,8 @@ void FuzzyMatcher::setQuery(const QString &newQuery) {
     m_scoreCache.clear();
     invalidateFilter();
     sort(0, Qt::AscendingOrder);
+    endResetModel();
+
     emit queryChanged();
 }
 
@@ -67,12 +71,21 @@ void FuzzyMatcher::setSourceModel(QAbstractItemModel *sourceModel) {
     if (!m_appIndexerModel && sourceModel) {
         m_appIndexerModel = sourceModel;
     }
+    m_scoreCache.clear();
     QSortFilterProxyModel::setSourceModel(sourceModel);
     updateRoleKeys();
     if (sourceModel) {
         connect(sourceModel, &QAbstractItemModel::modelReset, this, [this]() {
             m_scoreCache.clear();
             updateRoleKeys();
+            invalidateFilter();
+        });
+        connect(sourceModel, &QAbstractItemModel::rowsInserted, this, [this]() {
+            m_scoreCache.clear();
+            invalidateFilter();
+        });
+        connect(sourceModel, &QAbstractItemModel::rowsRemoved, this, [this]() {
+            m_scoreCache.clear();
             invalidateFilter();
         });
         connect(sourceModel, &QAbstractItemModel::dataChanged, this, [this]() {
