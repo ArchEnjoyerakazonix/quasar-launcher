@@ -11,6 +11,12 @@ Window {
     width: typeof ThemeManager !== "undefined" ? ThemeManager.windowWidth : 640
     height: typeof ThemeManager !== "undefined" ? ThemeManager.windowHeight : 420
 
+    onActiveChanged: {
+        if (!active && visible) {
+            root.hide()
+        }
+    }
+
     function onOpened() {
         searchBar.forceActiveFocus()
         if (typeof fuzzyMatcher !== "undefined") {

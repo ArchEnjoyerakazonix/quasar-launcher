@@ -95,6 +95,8 @@ qt_add_executable(test_fuzzymatcher
     src/appindexer.h
     src/frecencyranker.cpp
     src/frecencyranker.h
+    src/windowswitcher.cpp
+    src/windowswitcher.h
 )
 target_link_libraries(test_fuzzymatcher PRIVATE Qt6::Core Qt6::Gui Qt6::Test Qt6::Concurrent)
 add_test(NAME test_fuzzymatcher COMMAND test_fuzzymatcher)

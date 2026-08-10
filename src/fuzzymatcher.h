@@ -17,6 +17,8 @@ public:
     void setQuery(const QString &newQuery);
 
     void setSourceModel(QAbstractItemModel *sourceModel) override;
+    void setWindowModel(QAbstractItemModel *windowModel);
+    void setAppIndexerModel(QAbstractItemModel *appModel);
     
     enum CustomRoles {
         ScoreRole = Qt::UserRole + 150,
@@ -35,6 +37,8 @@ protected:
 
 private:
     QString m_query;
+    QAbstractItemModel *m_appIndexerModel = nullptr;
+    QAbstractItemModel *m_windowModel = nullptr;
     mutable std::unordered_map<int, int> m_scoreCache;
 
     int m_nameRole = -1;

@@ -169,8 +169,10 @@ int main(int argc, char *argv[])
     }
 
     AppIndexer *appIndexer = new AppIndexer(&app);
+    WindowSwitcher *windowSwitcher = new WindowSwitcher(&app);
     FuzzyMatcher *fuzzyMatcher = new FuzzyMatcher(&app);
-    fuzzyMatcher->setSourceModel(appIndexer);
+    fuzzyMatcher->setAppIndexerModel(appIndexer);
+    fuzzyMatcher->setWindowModel(windowSwitcher->model());
 
     qmlRegisterSingletonInstance("com.quasar.launcher", 1, 0, "FrecencyRanker", FrecencyRanker::instance());
     qmlRegisterSingletonInstance("com.quasar.launcher", 1, 0, "AppIndexer", appIndexer);
@@ -178,7 +180,6 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("com.quasar.launcher", 1, 0, "ThemeManager", ThemeManager::instance());
 
     QQmlApplicationEngine engine;
-    WindowSwitcher *windowSwitcher = new WindowSwitcher(&app);
     engine.rootContext()->setContextProperty("fuzzyMatcher", fuzzyMatcher);
     engine.rootContext()->setContextProperty("appIndexer", appIndexer);
     engine.rootContext()->setContextProperty("themeManager", ThemeManager::instance());
@@ -224,7 +225,7 @@ int main(int argc, char *argv[])
             if (lsWindow) {
                 lsWindow->setLayer(LayerShellQt::Window::LayerTop);
                 lsWindow->setAnchors(LayerShellQt::Window::Anchors(0));
-                lsWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
+                lsWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
                 lsWindow->setExclusiveZone(-1);
                 lsWindow->setScope(QStringLiteral("quasar"));
                 qDebug() << "LayerShellQt successfully configured on LayerTop.";

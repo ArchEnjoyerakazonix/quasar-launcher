@@ -19,17 +19,10 @@ Item {
         anchors.fill: parent
         clip: true
 
-        model: root.isWindowMode ? (typeof WindowSwitcher !== "undefined" ? WindowSwitcher.getMatchingWindows(root.query) : null) : (typeof fuzzyMatcher !== "undefined" ? fuzzyMatcher : null)
+        model: typeof fuzzyMatcher !== "undefined" ? fuzzyMatcher : null
         delegate: AppListDelegate {
             onClicked: {
-                if (root.isWindowMode && typeof modelData !== "undefined" && modelData && modelData.address) {
-                    if (typeof WindowSwitcher !== "undefined") {
-                        WindowSwitcher.focusWindow(modelData.address)
-                    }
-                    root.launchApp("__focus__", modelData.address)
-                } else {
-                    root.launchApp(model.exec || "", model.desktopFile || model.id || "")
-                }
+                root.launchApp(model.exec || "", model.desktopFile || model.id || "")
             }
         }
 

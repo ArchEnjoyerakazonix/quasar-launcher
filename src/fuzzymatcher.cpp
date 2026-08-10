@@ -1,5 +1,6 @@
 #include "fuzzymatcher.h"
 #include "frecencyranker.h"
+#include "windowswitcher.h"
 #include <vector>
 #include <array>
 #include <functional>
@@ -17,10 +18,36 @@ QString FuzzyMatcher::query() const {
     return m_query;
 }
 
+void FuzzyMatcher::setWindowModel(QAbstractItemModel *windowModel) {
+    m_windowModel = windowModel;
+}
+
+void FuzzyMatcher::setAppIndexerModel(QAbstractItemModel *appModel) {
+    m_appIndexerModel = appModel;
+    setSourceModel(appModel);
+}
+
 void FuzzyMatcher::setQuery(const QString &newQuery) {
     if (m_query == newQuery)
         return;
     m_query = newQuery;
+
+    QString trimmed = m_query.trimmed();
+    bool isWindowQuery = trimmed.startsWith("w:") || trimmed.startsWith("window:");
+
+    if (isWindowQuery && m_windowModel) {
+        if (auto *winModel = qobject_cast<WindowListModel*>(m_windowModel)) {
+            winModel->refresh();
+        }
+        if (sourceModel() != m_windowModel) {
+            setSourceModel(m_windowModel);
+        }
+    } else if (!isWindowQuery && m_appIndexerModel) {
+        if (sourceModel() != m_appIndexerModel) {
+            setSourceModel(m_appIndexerModel);
+        }
+    }
+
     m_scoreCache.clear();
     invalidateFilter();
     sort(0, Qt::AscendingOrder);
@@ -28,6 +55,9 @@ void FuzzyMatcher::setQuery(const QString &newQuery) {
 }
 
 void FuzzyMatcher::setSourceModel(QAbstractItemModel *sourceModel) {
+    if (!m_appIndexerModel && sourceModel) {
+        m_appIndexerModel = sourceModel;
+    }
     QSortFilterProxyModel::setSourceModel(sourceModel);
     updateRoleKeys();
     if (sourceModel) {
@@ -281,7 +311,11 @@ static int matchSingleQuery(const QString &name, const QString &genericName, con
 }
 
 int FuzzyMatcher::score(int sourceRow) const {
-    if (m_query.isEmpty()) return 1;
+    QString cleanQuery = m_query.trimmed();
+    if (cleanQuery.startsWith("w:")) cleanQuery = cleanQuery.mid(2).trimmed();
+    else if (cleanQuery.startsWith("window:")) cleanQuery = cleanQuery.mid(7).trimmed();
+    
+    if (cleanQuery.isEmpty()) return 1000;
     
     if (m_scoreCache.count(sourceRow)) {
         return m_scoreCache[sourceRow];
