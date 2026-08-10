@@ -40,8 +40,10 @@ private:
     int m_nameRole = -1;
     int m_genericNameRole = -1;
     int m_commentRole = -1;
+    int m_execRole = -1;
     int m_categoriesRole = -1;
     int m_keywordsRole = -1;
+    int m_desktopFileRole = -1;
     int m_frecencyRole = -1;
 
     void updateRoleKeys();

@@ -147,7 +147,9 @@ static QString convertRuToEnMnemonic(const QString &input) {
     return result;
 }
 
-static int matchSingleQuery(const QString &name, const QString &genericName, const QString &comment, const QString &query) {
+#include "frecencyranker.h"
+
+static int matchSingleQuery(const QString &name, const QString &genericName, const QString &comment, const QString &exec, const QStringList &keywords, const QString &query) {
     if (query.isEmpty()) return 1;
 
     QString qLower = query.toLower();
@@ -163,21 +165,59 @@ static int matchSingleQuery(const QString &name, const QString &genericName, con
         return 100000 + (1000 - nLen);
     }
 
-    // 2. Word Boundary Prefix Match in Name (e.g. "Theme Selector" for "Sel" -> 80,000+)
+    // 2. Acronym Match (e.g. "vsc" for "Visual Studio Code" or "tb" for "Telegram Desktop" -> 90,000+)
     QStringList words = nLower.split(QRegularExpression("[\\s\\-_]+"));
+    if (words.size() > 1 && qLen <= words.size()) {
+        bool acronymMatch = true;
+        for (int i = 0; i < qLen; ++i) {
+            if (words[i].isEmpty() || words[i][0] != qLower[i]) {
+                acronymMatch = false;
+                break;
+            }
+        }
+        if (acronymMatch) {
+            return 90000 + (1000 - nLen);
+        }
+    }
+
+    // 3. Word Boundary Prefix Match in Name (e.g. "Theme Selector" for "Sel" -> 80,000+)
     for (int i = 1; i < words.size(); ++i) {
         if (words[i].startsWith(qLower)) {
             return 80000 + (1000 - nLen) - (i * 10);
         }
     }
 
-    // 3. Exact Substring Match in Name (e.g. "Chromium" for "ro" -> 50,000+)
+    // 4. Exec Binary Name Match (e.g. "pavucontrol" -> "PulseAudio Volume Control" -> 75,000+)
+    if (!exec.isEmpty()) {
+        QString cleanExec = exec;
+        int spaceIdx = cleanExec.indexOf(QLatin1Char(' '));
+        if (spaceIdx != -1) cleanExec = cleanExec.left(spaceIdx);
+        int slashIdx = cleanExec.lastIndexOf(QLatin1Char('/'));
+        if (slashIdx != -1) cleanExec = cleanExec.mid(slashIdx + 1);
+        cleanExec = cleanExec.toLower();
+
+        if (cleanExec.startsWith(qLower)) {
+            return 75000 + (1000 - cleanExec.length());
+        }
+        if (cleanExec.contains(qLower)) {
+            return 60000 + (1000 - cleanExec.length());
+        }
+    }
+
+    // 5. Exact Substring Match in Name (e.g. "Chromium" for "ro" -> 50,000+)
     int subPos = nLower.indexOf(qLower);
     if (subPos != -1) {
         return 50000 + (1000 - subPos * 10 - nLen);
     }
 
-    // 4. Character Overlap Score (Levenshtein / Edit Distance)
+    // 6. Keywords / Desktop Categories Match (45,000+)
+    for (const QString &kw : keywords) {
+        if (kw.toLower().startsWith(qLower)) {
+            return 45000 + (1000 - kw.length());
+        }
+    }
+
+    // 7. Character Overlap Score (Levenshtein / Edit Distance)
     int matchedCount = 0;
     QString nTemp = nLower;
     for (int i = 0; i < qLen; ++i) {
@@ -225,7 +265,7 @@ static int matchSingleQuery(const QString &name, const QString &genericName, con
         if (overlapScore > 0) return overlapScore;
     }
 
-    // 5. GenericName or Comment Prefix/Substring (1,000+)
+    // 8. GenericName or Comment Prefix/Substring (1,000+)
     if (gLower.startsWith(qLower) || cLower.startsWith(qLower)) return 1000;
     if (gLower.contains(qLower) || cLower.contains(qLower)) return 500;
 
@@ -244,21 +284,31 @@ int FuzzyMatcher::score(int sourceRow) const {
     QString name = m_nameRole != -1 ? idx.data(m_nameRole).toString() : QString();
     QString genericName = m_genericNameRole != -1 ? idx.data(m_genericNameRole).toString() : QString();
     QString comment = m_commentRole != -1 ? idx.data(m_commentRole).toString() : QString();
+    QString exec = m_execRole != -1 ? idx.data(m_execRole).toString() : QString();
+    QStringList keywords = m_keywordsRole != -1 ? idx.data(m_keywordsRole).toStringList() : QStringList();
+    QString desktopFile = m_desktopFileRole != -1 ? idx.data(m_desktopFileRole).toString() : QString();
 
     if (name.isEmpty() && genericName.isEmpty()) {
         m_scoreCache[sourceRow] = 0;
         return 0;
     }
 
-    int scoreOrig = matchSingleQuery(name, genericName, comment, m_query);
+    int scoreOrig = matchSingleQuery(name, genericName, comment, exec, keywords, m_query);
     
     QString qwertTrans = convertRuToEn(m_query);
-    int scoreQwerty = (qwertTrans != m_query) ? matchSingleQuery(name, genericName, comment, qwertTrans) : 0;
+    int scoreQwerty = (qwertTrans != m_query) ? matchSingleQuery(name, genericName, comment, exec, keywords, qwertTrans) : 0;
 
     QString mnemonTrans = convertRuToEnMnemonic(m_query);
-    int scoreMnemonic = (mnemonTrans != m_query && mnemonTrans != qwertTrans) ? matchSingleQuery(name, genericName, comment, mnemonTrans) : 0;
+    int scoreMnemonic = (mnemonTrans != m_query && mnemonTrans != qwertTrans) ? matchSingleQuery(name, genericName, comment, exec, keywords, mnemonTrans) : 0;
 
     int finalScore = std::max({scoreOrig, scoreQwerty, scoreMnemonic});
+
+    // Add Frecency Ranker bonus for frequently/recently launched apps
+    if (finalScore > 0 && !desktopFile.isEmpty()) {
+        int frecencyScore = static_cast<int>(FrecencyRanker::instance()->getScore(desktopFile));
+        finalScore += frecencyScore * 100;
+    }
+
     m_scoreCache[sourceRow] = finalScore;
     return finalScore;
 }
@@ -267,17 +317,17 @@ QString FuzzyMatcher::formatHighlightedName(const QString &name, const QString &
     if (query.isEmpty()) return name.toHtmlEscaped();
 
     QString activeQuery = query;
-    int bestScore = matchSingleQuery(name, QString(), QString(), activeQuery);
+    int bestScore = matchSingleQuery(name, QString(), QString(), QString(), QStringList(), activeQuery);
     
     QString qwertTrans = convertRuToEn(query);
-    int sQ = (qwertTrans != query) ? matchSingleQuery(name, QString(), QString(), qwertTrans) : 0;
+    int sQ = (qwertTrans != query) ? matchSingleQuery(name, QString(), QString(), QString(), QStringList(), qwertTrans) : 0;
     if (sQ > bestScore) {
         bestScore = sQ;
         activeQuery = qwertTrans;
     }
 
     QString mnemonTrans = convertRuToEnMnemonic(query);
-    int sM = (mnemonTrans != query) ? matchSingleQuery(name, QString(), QString(), mnemonTrans) : 0;
+    int sM = (mnemonTrans != query) ? matchSingleQuery(name, QString(), QString(), QString(), QStringList(), mnemonTrans) : 0;
     if (sM > bestScore) {
         bestScore = sM;
         activeQuery = mnemonTrans;
