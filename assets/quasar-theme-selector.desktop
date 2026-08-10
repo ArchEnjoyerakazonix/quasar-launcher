@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Quasar Theme Selector
+GenericName=Launcher Theme Customizer
+Comment=Customize themes and styles for Quasar Launcher
+Exec=/home/archuser/.local/bin/quasar-theme-selector
+Icon=quasar
+Terminal=false
+Type=Application
+Categories=Settings;DesktopSettings;Qt;
+Keywords=theme;rofi;style;quasar;launcher;customization;

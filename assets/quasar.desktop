@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Quasar
+GenericName=Application Launcher
+Comment=Fast Spotlight-style Wayland Application Launcher
+Exec=/home/archuser/.local/bin/launch_quasar.sh
+Icon=quasar
+Terminal=false
+Type=Application
+Categories=System;Utility;
+Keywords=rofi;launcher;quasar;dmenu;

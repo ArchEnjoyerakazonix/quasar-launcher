@@ -9,7 +9,7 @@ Item {
 
     signal launchApp(string exec, string id)
 
-    property var query: typeof fuzzyMatcher !== "undefined" ? fuzzyMatcher.query : ""
+    property int extraSelectionIndex: -1 // -1: normal list, 0: Run command, 1: Search web
 
     ListView {
         id: list
@@ -33,7 +33,7 @@ Item {
 
         footer: Column {
             width: list.width
-            spacing: 2
+            spacing: 4
             visible: root.query.length > 0
 
             // Command runner
@@ -42,7 +42,7 @@ Item {
                 height: 34
                 anchors.horizontalCenter: parent.horizontalCenter
                 radius: 4
-                color: cmdArea.containsMouse ? 
+                color: (cmdArea.containsMouse || root.extraSelectionIndex === 0) ? 
                     (typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa") : 
                     "transparent"
 
@@ -54,8 +54,9 @@ Item {
 
                     Text { 
                         text: "Run command"
-                        color: cmdArea.containsMouse ? Qt.alpha("#ffffff", 0.8) : Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.secondaryTextColor : "#a6adc8", 0.7)
+                        color: (cmdArea.containsMouse || root.extraSelectionIndex === 0) ? "#ffffff" : Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.secondaryTextColor : "#a6adc8", 0.7)
                         font.pixelSize: 11
+                        font.bold: (cmdArea.containsMouse || root.extraSelectionIndex === 0)
                         font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
                         anchors.verticalCenter: parent.verticalCenter
                         width: 80
@@ -63,7 +64,7 @@ Item {
 
                     Text { 
                         text: root.query
-                        color: cmdArea.containsMouse ? "#ffffff" : (typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4")
+                        color: (cmdArea.containsMouse || root.extraSelectionIndex === 0) ? "#ffffff" : (typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4")
                         font.pixelSize: 13
                         font.family: "Monospace"
                         anchors.verticalCenter: parent.verticalCenter
@@ -75,6 +76,7 @@ Item {
                     id: cmdArea
                     anchors.fill: parent
                     hoverEnabled: true
+                    preventStealing: true
                     onClicked: {
                         root.launchApp(root.query, "")
                     }
@@ -87,7 +89,7 @@ Item {
                 height: 34
                 anchors.horizontalCenter: parent.horizontalCenter
                 radius: 4
-                color: webArea.containsMouse ? 
+                color: (webArea.containsMouse || root.extraSelectionIndex === 1) ? 
                     (typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa") : 
                     "transparent"
 
@@ -99,8 +101,9 @@ Item {
 
                     Text { 
                         text: "Search web"
-                        color: webArea.containsMouse ? Qt.alpha("#ffffff", 0.8) : Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.secondaryTextColor : "#a6adc8", 0.7)
+                        color: (webArea.containsMouse || root.extraSelectionIndex === 1) ? "#ffffff" : Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.secondaryTextColor : "#a6adc8", 0.7)
                         font.pixelSize: 11
+                        font.bold: (webArea.containsMouse || root.extraSelectionIndex === 1)
                         font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
                         anchors.verticalCenter: parent.verticalCenter
                         width: 80
@@ -108,7 +111,7 @@ Item {
 
                     Text { 
                         text: root.query
-                        color: webArea.containsMouse ? "#ffffff" : (typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4")
+                        color: (webArea.containsMouse || root.extraSelectionIndex === 1) ? "#ffffff" : (typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4")
                         font.pixelSize: 13
                         font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
                         anchors.verticalCenter: parent.verticalCenter
@@ -120,6 +123,7 @@ Item {
                     id: webArea
                     anchors.fill: parent
                     hoverEnabled: true
+                    preventStealing: true
                     onClicked: {
                         root.launchApp("xdg-open 'https://www.google.com/search?q=" + encodeURIComponent(root.query) + "'", "")
                     }
@@ -142,6 +146,7 @@ Item {
         Connections {
             target: typeof fuzzyMatcher !== "undefined" ? fuzzyMatcher : null
             function onQueryChanged() {
+                root.extraSelectionIndex = -1
                 if (list.count > 0) {
                     list.currentIndex = 0
                 }
@@ -149,7 +154,11 @@ Item {
         }
 
         Keys.onReturnPressed: {
-            if (list.currentIndex >= 0 && list.currentIndex < list.count) {
+            if (root.extraSelectionIndex === 1) {
+                root.launchApp("xdg-open 'https://www.google.com/search?q=" + encodeURIComponent(root.query) + "'", "")
+            } else if (root.extraSelectionIndex === 0) {
+                root.launchApp(root.query, "")
+            } else if (list.currentIndex >= 0 && list.currentIndex < list.count) {
                 var itemModel = list.model.index(list.currentIndex, 0)
                 var roles = list.model.roleNames ? list.model.roleNames() : {}
                 var execRole = 260
@@ -167,7 +176,16 @@ Item {
         }
 
         Keys.onUpPressed: {
-            if (list.currentIndex > 0) {
+            if (root.extraSelectionIndex > 0) {
+                root.extraSelectionIndex--
+            } else if (root.extraSelectionIndex === 0) {
+                root.extraSelectionIndex = -1
+                if (list.count > 0) {
+                    list.currentIndex = list.count - 1
+                } else {
+                    searchBar.forceActiveFocus()
+                }
+            } else if (list.currentIndex > 0) {
                 list.currentIndex--
             } else {
                 searchBar.forceActiveFocus()
@@ -177,12 +195,17 @@ Item {
         Keys.onDownPressed: {
             if (list.currentIndex < list.count - 1) {
                 list.currentIndex++
+            } else if (root.query.length > 0) {
+                if (root.extraSelectionIndex < 1) {
+                    root.extraSelectionIndex++
+                }
             }
         }
     }
 
     function forceActiveFocus() {
         list.forceActiveFocus()
+        root.extraSelectionIndex = -1
         if (list.count > 0 && list.currentIndex < 0) {
             list.currentIndex = 0
         }
