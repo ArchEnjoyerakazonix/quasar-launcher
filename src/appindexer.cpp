@@ -148,6 +148,8 @@ void AppIndexer::onScanFinished()
     m_apps = std::move(newApps);
     endResetModel();
 
+    qDebug() << "AppIndexer: Successfully scanned" << m_apps.size() << "applications.";
+
     emit filteredCountChanged();
 }
 
@@ -218,8 +220,10 @@ AppEntry AppIndexer::parseDesktopFile(const QString& filePath)
         QString value = line.mid(eqIndex + 1).trimmed();
 
         if (key == QLatin1String("Type")) {
-            isApp = (value == QLatin1String("Application"));
-        } else if (key == QLatin1String("Name") && entry.name.isEmpty()) {
+            isApp = value.startsWith(QLatin1String("Application"));
+        } else if (key == QLatin1String("Name")) {
+            entry.name = value;
+        } else if (key.startsWith(QLatin1String("Name[")) && entry.name.isEmpty()) {
             entry.name = value;
         } else if (key == QLatin1String("GenericName") && entry.genericName.isEmpty()) {
             entry.genericName = value;
@@ -231,8 +235,8 @@ AppEntry AppIndexer::parseDesktopFile(const QString& filePath)
             entry.iconName = value;
         } else if (key == QLatin1String("Categories")) {
             entry.categories = value.split(QLatin1Char(';'), Qt::SkipEmptyParts);
-        } else if (key == QLatin1String("Keywords")) {
-            entry.keywords = value.split(QLatin1Char(';'), Qt::SkipEmptyParts);
+        } else if (key == QLatin1String("Keywords") || key.startsWith(QLatin1String("Keywords["))) {
+            entry.keywords.append(value.split(QLatin1Char(';'), Qt::SkipEmptyParts));
         } else if (key == QLatin1String("NoDisplay")) {
             noDisplay = (value.toLower() == QLatin1String("true"));
         } else if (key == QLatin1String("Hidden")) {
