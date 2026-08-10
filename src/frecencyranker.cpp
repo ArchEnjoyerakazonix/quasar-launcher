@@ -86,7 +86,7 @@ double FrecencyRanker::getScore(const QString &appId) const
 
 QString FrecencyRanker::saveFilePath() const
 {
-    QString configDir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/nexus-launcher";
+    QString configDir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/quasar";
     return configDir + "/frecency.json";
 }
 

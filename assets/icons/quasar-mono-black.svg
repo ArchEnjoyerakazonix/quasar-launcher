@@ -1,0 +1,12 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+
+  <g>
+    <ellipse cx="256" cy="256" rx="205" ry="52"
+      transform="rotate(-22 256 256)"
+      fill="none" stroke="#0D0D0F" stroke-width="22" stroke-linecap="round"/>
+    <circle cx="256" cy="256" r="128"
+      fill="none" stroke="#0D0D0F" stroke-width="22"/>
+    <path d="M 256.0,156.0 L 342.6,206.0 L 342.6,306.0 L 256.0,356.0 L 169.4,306.0 L 169.4,206.0 Z" fill="none" stroke="#0D0D0F" stroke-width="22"
+      stroke-linejoin="round"/>
+  </g>
+</svg>

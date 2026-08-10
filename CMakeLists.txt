@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(nexus-launcher VERSION 1.0 LANGUAGES CXX)
+project(quasar VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,7 +11,7 @@ find_package(LayerShellQt REQUIRED)
 qt_standard_project_setup()
 
 # 1. Main Launcher Executable
-qt_add_executable(nexus-launcher
+qt_add_executable(quasar
     src/main.cpp
     src/launchercontroller.h
     src/appindexer.cpp
@@ -24,8 +24,8 @@ qt_add_executable(nexus-launcher
     src/thememanager.h
 )
 
-qt_add_qml_module(nexus-launcher
-    URI com.nexus.launcher
+qt_add_qml_module(quasar
+    URI com.quasar.launcher
     VERSION 1.0
     QML_FILES
         qml/Main.qml
@@ -40,7 +40,7 @@ qt_add_qml_module(nexus-launcher
         theme_selector/PresetButton.qml
 )
 
-target_link_libraries(nexus-launcher
+target_link_libraries(quasar
     PRIVATE
     Qt6::Core
     Qt6::Quick
@@ -51,14 +51,14 @@ target_link_libraries(nexus-launcher
 )
 
 # 2. Separate Theme Selector Executable
-qt_add_executable(nexus-theme-selector
+qt_add_executable(quasar-theme-selector
     src/main_selector.cpp
     src/thememanager.cpp
     src/thememanager.h
 )
 
-qt_add_qml_module(nexus-theme-selector
-    URI com.nexus.themeselector
+qt_add_qml_module(quasar-theme-selector
+    URI com.quasar.themeselector
     VERSION 1.0
     QML_FILES
         theme_selector/SelectorMain.qml
@@ -66,7 +66,7 @@ qt_add_qml_module(nexus-theme-selector
         theme_selector/PresetButton.qml
 )
 
-target_link_libraries(nexus-theme-selector
+target_link_libraries(quasar-theme-selector
     PRIVATE
     Qt6::Core
     Qt6::Quick
@@ -74,6 +74,11 @@ target_link_libraries(nexus-theme-selector
     Qt6::QuickControls2
 )
 
-install(TARGETS nexus-launcher nexus-theme-selector
+install(TARGETS quasar quasar-theme-selector
     RUNTIME DESTINATION /usr/local/bin
 )
+
+install(FILES assets/icons/quasar-icon.svg DESTINATION share/icons/hicolor/scalable/apps RENAME quasar.svg)
+install(FILES assets/icons/quasar-mono-white.svg DESTINATION share/icons/hicolor/scalable/status RENAME quasar-mono-white.svg)
+install(FILES assets/icons/quasar-mono-black.svg DESTINATION share/icons/hicolor/scalable/status RENAME quasar-mono-black.svg)
+

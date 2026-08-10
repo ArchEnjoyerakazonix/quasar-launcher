@@ -1,14 +1,14 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Nexus 1.0
+import Quasar 1.0
 
 Window {
     id: window
     width: 940
     height: 620
     visible: true
-    title: "Nexus Theme Selector"
+    title: "Quasar Theme Selector"
     color: "#1e1e2e"
 
     RowLayout {

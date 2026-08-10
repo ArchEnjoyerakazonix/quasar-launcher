@@ -30,15 +30,15 @@ public:
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
-    app.setApplicationName("nexus-theme-selector");
-    app.setOrganizationName("com.nexus");
+    app.setApplicationName("quasar-theme-selector");
+    app.setOrganizationName("com.quasar");
 
     QQmlApplicationEngine engine;
     engine.addImageProvider(QLatin1String("icon"), new IconProvider);
     
-    qmlRegisterSingletonInstance("Nexus", 1, 0, "ThemeManager", ThemeManager::instance());
+    qmlRegisterSingletonInstance("Quasar", 1, 0, "ThemeManager", ThemeManager::instance());
 
-    const QUrl url(QStringLiteral("qrc:/com/nexus/themeselector/theme_selector/SelectorMain.qml"));
+    const QUrl url(QStringLiteral("qrc:/com/quasar/themeselector/theme_selector/SelectorMain.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {
         if (!obj && url == objUrl)

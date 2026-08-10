@@ -1,4 +1,5 @@
 import QtQuick
+import com.quasar.launcher 1.0
 
 Item {
     id: root

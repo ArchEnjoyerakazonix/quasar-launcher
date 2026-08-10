@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Window
+import com.quasar.launcher 1.0
 
 Window {
     id: root
@@ -7,8 +8,8 @@ Window {
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
-    width: typeof ThemeManager !== "undefined" ? ThemeManager.windowWidth : 640
-    height: typeof ThemeManager !== "undefined" ? ThemeManager.windowHeight : 420
+    width: Screen.width
+    height: Screen.height
 
     function onOpened() {
         searchBar.forceActiveFocus()
@@ -24,10 +25,18 @@ Window {
         onActivated: root.hide()
     }
 
-    // Main Rofi Window Container
+    // Dark backdrop overlay that closes launcher on click
+    GlassBackground {
+        anchors.fill: parent
+        onBackgroundClicked: root.hide()
+    }
+
+    // Main Rofi Window Container (Centered compact box)
     Rectangle {
         id: container
-        anchors.fill: parent
+        width: typeof ThemeManager !== "undefined" ? ThemeManager.windowWidth : 640
+        height: typeof ThemeManager !== "undefined" ? ThemeManager.windowHeight : 420
+        anchors.centerIn: parent
         radius: typeof ThemeManager !== "undefined" ? ThemeManager.borderRadius : 8
 
         color: Qt.alpha(

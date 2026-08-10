@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import com.quasar.launcher 1.0
 
 Item {
     id: root

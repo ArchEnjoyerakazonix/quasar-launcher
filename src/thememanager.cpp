@@ -21,7 +21,7 @@ ThemeManager::ThemeManager(QObject *parent)
 
 QString ThemeManager::themeFilePath() const
 {
-    QString configDir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/nexus-launcher";
+    QString configDir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/quasar";
     return configDir + "/theme.json";
 }
 
