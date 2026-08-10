@@ -72,7 +72,12 @@ Window {
                 id: appList
                 width: parent.width
                 height: parent.height - searchBar.height - parent.spacing
+                query: searchBar.text
                 visible: typeof ThemeManager === "undefined" || ThemeManager.layoutMode === "list"
+
+                onRequestSearchFocus: {
+                    searchBar.forceActiveFocus()
+                }
 
                 onLaunchApp: function(appExec, appId) {
                     if (typeof appIndexer !== "undefined") {
@@ -90,7 +95,12 @@ Window {
                 id: appGrid
                 width: parent.width
                 height: parent.height - searchBar.height - parent.spacing
+                query: searchBar.text
                 visible: typeof ThemeManager !== "undefined" && ThemeManager.layoutMode === "grid"
+
+                onRequestSearchFocus: {
+                    searchBar.forceActiveFocus()
+                }
 
                 onLaunchApp: function(appExec, appId) {
                     if (typeof appIndexer !== "undefined") {

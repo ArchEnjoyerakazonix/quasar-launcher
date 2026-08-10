@@ -1,4 +1,5 @@
 #include "fuzzymatcher.h"
+#include "frecencyranker.h"
 #include <vector>
 #include <array>
 #include <functional>
@@ -38,8 +39,10 @@ void FuzzyMatcher::updateRoleKeys() {
         if (it.value() == "name") m_nameRole = it.key();
         else if (it.value() == "genericName") m_genericNameRole = it.key();
         else if (it.value() == "comment") m_commentRole = it.key();
+        else if (it.value() == "exec") m_execRole = it.key();
         else if (it.value() == "categories") m_categoriesRole = it.key();
         else if (it.value() == "keywords") m_keywordsRole = it.key();
+        else if (it.value() == "desktopFile") m_desktopFileRole = it.key();
         else if (it.value() == "frecency") m_frecencyRole = it.key();
     }
 }
@@ -147,7 +150,30 @@ static QString convertRuToEnMnemonic(const QString &input) {
     return result;
 }
 
-#include "frecencyranker.h"
+static int boundedDamerauLevenshtein(const QString &s1, const QString &s2, int maxDist) {
+    int len1 = s1.length();
+    int len2 = s2.length();
+    if (std::abs(len1 - len2) > maxDist) return maxDist + 1;
+
+    std::vector<int> prev(len2 + 1), curr(len2 + 1);
+    for (int j = 0; j <= len2; ++j) prev[j] = j;
+
+    for (int i = 1; i <= len1; ++i) {
+        curr[0] = i;
+        int minInRow = curr[0];
+        for (int j = 1; j <= len2; ++j) {
+            int cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1;
+            curr[j] = std::min({ prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost });
+            if (i > 1 && j > 1 && s1[i - 1] == s2[j - 2] && s1[i - 2] == s2[j - 1]) {
+                curr[j] = std::min(curr[j], prev[j - 2] + 1);
+            }
+            minInRow = std::min(minInRow, curr[j]);
+        }
+        if (minInRow > maxDist) return maxDist + 1;
+        prev = curr;
+    }
+    return prev[len2];
+}
 
 static int matchSingleQuery(const QString &name, const QString &genericName, const QString &comment, const QString &exec, const QStringList &keywords, const QString &query) {
     if (query.isEmpty()) return 1;
@@ -217,18 +243,14 @@ static int matchSingleQuery(const QString &name, const QString &genericName, con
         }
     }
 
-    // 7. Character Overlap Score (Levenshtein / Edit Distance)
-    int matchedCount = 0;
-    QString nTemp = nLower;
-    for (int i = 0; i < qLen; ++i) {
-        int pos = nTemp.indexOf(qLower[i]);
-        if (pos != -1) {
-            matchedCount++;
-            nTemp.remove(pos, 1);
-        }
+    // 7. High-Precision Damerau-Levenshtein Edit Distance (e.g. "stream" vs "Steam" - 1 insertion/typo)
+    int maxAllowedDist = (qLen <= 4) ? 1 : 2;
+    int editDist = boundedDamerauLevenshtein(qLower, nLower, maxAllowedDist);
+    if (editDist <= maxAllowedDist) {
+        return 35000 - (editDist * 5000) - (std::abs(nLen - qLen) * 200);
     }
 
-    // Calculate Subsequence Gaps
+    // 8. Strict Subsequence Match with Gap Penalties
     int qIdx = 0;
     int firstMatch = -1;
     int lastMatch = -1;
@@ -240,32 +262,15 @@ static int matchSingleQuery(const QString &name, const QString &genericName, con
         }
     }
 
-    int score = 0;
-
-    // High similarity (e.g. "stream" vs "Steam" - 5 out of 6 chars match, edit dist 1)
-    if (matchedCount >= qLen - 1 && std::abs(nLen - qLen) <= 2) {
-        int editDistPenalty = (qLen - matchedCount) * 1000 + std::abs(nLen - qLen) * 500;
-        score = 40000 - editDistPenalty - (firstMatch > 0 ? firstMatch * 100 : 0);
-        return std::max(5000, score);
-    }
-
     if (qIdx == qLen && firstMatch != -1) {
         int span = lastMatch - firstMatch + 1;
         int extraGap = span - qLen;
         int lenDiff = std::abs(nLen - qLen);
-        // Heavy penalty for large gaps and huge length difference
         int subseqScore = 20000 - (extraGap * 1200) - (lenDiff * 300) - (firstMatch * 200);
         if (subseqScore > 0) return subseqScore;
     }
 
-    if (matchedCount >= 1) {
-        int lenDiff = std::abs(nLen - qLen);
-        int unmappedChars = qLen - matchedCount;
-        int overlapScore = (10000 * matchedCount / qLen) - (lenDiff * 200) - (unmappedChars * 500);
-        if (overlapScore > 0) return overlapScore;
-    }
-
-    // 8. GenericName or Comment Prefix/Substring (1,000+)
+    // 9. GenericName or Comment Prefix/Substring (1,000+)
     if (gLower.startsWith(qLower) || cLower.startsWith(qLower)) return 1000;
     if (gLower.contains(qLower) || cLower.contains(qLower)) return 500;
 

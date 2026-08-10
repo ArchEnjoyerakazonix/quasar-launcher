@@ -135,9 +135,11 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("fuzzyMatcher", fuzzyMatcher);
     engine.rootContext()->setContextProperty("appIndexer", appIndexer);
     engine.rootContext()->setContextProperty("themeManager", ThemeManager::instance());
+    engine.rootContext()->setContextProperty("frecencyRanker", FrecencyRanker::instance());
     engine.rootContext()->setContextProperty("FuzzyMatcher", fuzzyMatcher);
     engine.rootContext()->setContextProperty("AppIndexer", appIndexer);
     engine.rootContext()->setContextProperty("ThemeManager", ThemeManager::instance());
+    engine.rootContext()->setContextProperty("FrecencyRanker", FrecencyRanker::instance());
     engine.addImageProvider(QLatin1String("icon"), new IconProvider);
 
     QWindow *rootWindow = nullptr;

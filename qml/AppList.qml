@@ -8,7 +8,9 @@ Item {
     height: parent ? parent.height : 400
 
     signal launchApp(string exec, string id)
+    signal requestSearchFocus()
 
+    property string query: ""
     property int extraSelectionIndex: -1 // -1: normal list, 0: Run command, 1: Search web
 
     ListView {
@@ -183,12 +185,12 @@ Item {
                 if (list.count > 0) {
                     list.currentIndex = list.count - 1
                 } else {
-                    searchBar.forceActiveFocus()
+                    root.requestSearchFocus()
                 }
             } else if (list.currentIndex > 0) {
                 list.currentIndex--
             } else {
-                searchBar.forceActiveFocus()
+                root.requestSearchFocus()
             }
         }
 

@@ -32,6 +32,7 @@ public:
         ExecRole,
         IconNameRole,
         CategoriesRole,
+        KeywordsRole,
         DesktopFileRole,
         ScoreRole
     };

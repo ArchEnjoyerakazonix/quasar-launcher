@@ -7,6 +7,9 @@ Item {
     width: Math.min(parent.width - 80, 720)
 
     signal launchApp(string exec, string id)
+    signal requestSearchFocus()
+
+    property string query: ""
 
     GridView {
         id: grid
@@ -62,7 +65,7 @@ Item {
             if (grid.currentIndex >= Math.floor(grid.width / grid.cellWidth)) {
                 grid.moveCurrentIndexUp()
             } else {
-                searchBar.forceActiveFocus()
+                root.requestSearchFocus()
             }
         }
     }

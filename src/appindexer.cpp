@@ -70,6 +70,7 @@ QVariant AppIndexer::data(const QModelIndex &index, int role) const
     case ExecRole: return app.exec;
     case IconNameRole: return app.iconName;
     case CategoriesRole: return app.categories;
+    case KeywordsRole: return app.keywords;
     case DesktopFileRole: return app.desktopFile;
     case ScoreRole: return app.score;
     }
@@ -86,6 +87,7 @@ QHash<int, QByteArray> AppIndexer::roleNames() const
     roles[ExecRole] = "exec";
     roles[IconNameRole] = "iconName";
     roles[CategoriesRole] = "categories";
+    roles[KeywordsRole] = "keywords";
     roles[DesktopFileRole] = "desktopFile";
     roles[ScoreRole] = "score";
     return roles;
