@@ -7,10 +7,9 @@ ActionModel::ActionModel(QObject *parent)
 {
     m_actions = {
         {"/accentcolor", "quasar theme", "color-management", "Open Quasar Theme Selector & Customizer"},
-        {"/dark", "gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'", "weather-clear-night", "Switch system color scheme to Dark mode"},
-        {"/light", "gsettings set org.gnome.desktop.interface color-scheme 'prefer-light'", "weather-clear", "Switch system color scheme to Light mode"},
+        {"/dark", "bash /home/archuser/.config/quickshell/ii/scripts/colors/switchwall.sh --mode dark --noswitch", "weather-clear-night", "Switch system color scheme to Dark mode"},
+        {"/light", "bash /home/archuser/.config/quickshell/ii/scripts/colors/switchwall.sh --mode light --noswitch", "weather-clear", "Switch system color scheme to Light mode"},
         {"/wallpaper", "bash /home/archuser/.config/hypr/scripts/wallpaper-picker.sh", "preferences-desktop-wallpaper", "Open QuickSwitcher Wallpaper Hub"},
-        {"/konachanwallpaper", "bash /home/archuser/.config/quickshell/ii/scripts/colors/switchwall.sh", "image-x-generic", "Fetch & apply random wallpaper"},
         {"/todo", "hyprctl dispatch togglespecialworkspace todo", "task-accepted", "Toggle Todo Special Workspace"},
         {"/wipeclipboard", "cliphist wipe", "edit-clear", "Wipe clipboard history"},
         {"/terminal", "kitty", "utilities-terminal", "Launch Kitty Terminal"}
