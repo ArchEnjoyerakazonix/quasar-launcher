@@ -160,7 +160,8 @@ Window {
                 Flow {
                     id: presetsFlow
                     Layout.fillWidth: true
-                    implicitHeight: childrenRect.height
+                    Layout.preferredHeight: childrenRect.height
+                    height: childrenRect.height
                     spacing: 8
 
                     Repeater {

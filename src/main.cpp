@@ -16,6 +16,7 @@
 #include <QFile>
 #include <QDir>
 #include <QDebug>
+#include <QProcess>
 
 #include "frecencyranker.h"
 #include "appindexer.h"
@@ -132,6 +133,14 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     app.setApplicationName("quasar");
     app.setOrganizationName("com.quasar");
+
+    for (int i = 1; i < argc; ++i) {
+        QString arg = QString(argv[i]);
+        if (arg == "theme" || arg == "--theme" || arg == "theme-selector") {
+            QProcess::startDetached("quasar-theme-selector", QStringList());
+            return 0;
+        }
+    }
 
     if (QDBusConnection::sessionBus().interface()->isServiceRegistered(dbusServiceName)) {
         for (int i = 1; i < argc; ++i) {
