@@ -220,7 +220,11 @@ int main(int argc, char *argv[])
                 } else {
                     lsWindow->setAnchors(LayerShellQt::Window::Anchors(0));
                 }
-                lsWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
+                if (dim) {
+                    lsWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
+                } else {
+                    lsWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
+                }
                 lsWindow->setExclusiveZone(-1);
                 lsWindow->setScope(QStringLiteral("quasar"));
                 qDebug() << "LayerShellQt successfully configured. Dim overlay:" << dim;

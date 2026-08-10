@@ -129,6 +129,10 @@ QStringList ThemeManager::getAvailablePresets() const
         "Nord Dark",
         "Tokyo Night",
         "Tokyo Night Light",
+        "Cyberpunk 2077",
+        "Emerald Glass",
+        "Solarized Gold",
+        "Obsidian Velvet",
         "Dracula",
         "Gruvbox Dark",
         "Gruvbox Light",
@@ -153,7 +157,7 @@ QString ThemeManager::getPresetCategory(const QString &presetName) const
         presetName == "Gruvbox Light" || presetName == "Rose Pine Dawn") {
         return "Light";
     }
-    if (presetName == "Synthwave '84" || presetName == "Cyberpunk Neon" || presetName == "Modern Glass") {
+    if (presetName == "Synthwave '84" || presetName == "Cyberpunk 2077" || presetName == "Emerald Glass" || presetName == "Modern Glass") {
         return "Neon";
     }
     if (presetName == "Rofi Classic") {
@@ -327,11 +331,87 @@ void ThemeManager::loadPreset(const QString &presetName)
         m_fontSize = 14;
         m_borderRadius = 10;
         m_borderWidth = 1;
-        m_borderColor = "#9ece6a";
+        m_borderColor = "#9699a3";
         m_showIcons = true;
         m_iconSize = 28;
         m_promptText = "> ";
         m_windowWidth = 650;
+        m_windowHeight = 430;
+    } else if (presetName == "Cyberpunk 2077") {
+        m_layoutMode = "list";
+        m_backgroundColor = "#0d0f18";
+        m_bgOpacity = 0.92;
+        m_cardColor = "#1a1d2e";
+        m_cardOpacity = 0.95;
+        m_accentColor = "#ff0055";
+        m_textColor = "#00ffe5";
+        m_secondaryTextColor = "#8a99ad";
+        m_fontFamily = "Monospace";
+        m_fontSize = 14;
+        m_borderRadius = 12;
+        m_borderWidth = 2;
+        m_borderColor = "#ff0055";
+        m_showIcons = true;
+        m_iconSize = 28;
+        m_promptText = "cyber:// ";
+        m_windowWidth = 670;
+        m_windowHeight = 440;
+    } else if (presetName == "Emerald Glass") {
+        m_layoutMode = "grid";
+        m_backgroundColor = "#061a14";
+        m_bgOpacity = 0.85;
+        m_cardColor = "#0e2a22";
+        m_cardOpacity = 0.90;
+        m_accentColor = "#10b981";
+        m_textColor = "#e6f4f1";
+        m_secondaryTextColor = "#6ee7b7";
+        m_fontFamily = "Sans";
+        m_fontSize = 14;
+        m_borderRadius = 14;
+        m_borderWidth = 2;
+        m_borderColor = "#059669";
+        m_showIcons = true;
+        m_iconSize = 44;
+        m_promptText = "emerald: ";
+        m_windowWidth = 700;
+        m_windowHeight = 480;
+    } else if (presetName == "Solarized Gold") {
+        m_layoutMode = "list";
+        m_backgroundColor = "#002b36";
+        m_bgOpacity = 0.94;
+        m_cardColor = "#073642";
+        m_cardOpacity = 0.95;
+        m_accentColor = "#b58900";
+        m_textColor = "#839496";
+        m_secondaryTextColor = "#586e75";
+        m_fontFamily = "Sans";
+        m_fontSize = 14;
+        m_borderRadius = 8;
+        m_borderWidth = 1;
+        m_borderColor = "#cb4b16";
+        m_showIcons = true;
+        m_iconSize = 26;
+        m_promptText = "solar: ";
+        m_windowWidth = 640;
+        m_windowHeight = 420;
+    } else if (presetName == "Obsidian Velvet") {
+        m_layoutMode = "list";
+        m_backgroundColor = "#121216";
+        m_bgOpacity = 0.92;
+        m_cardColor = "#1b1b22";
+        m_cardOpacity = 0.95;
+        m_accentColor = "#a855f7";
+        m_textColor = "#f3e8ff";
+        m_secondaryTextColor = "#9333ea";
+        m_fontFamily = "Sans";
+        m_fontSize = 14;
+        m_borderRadius = 12;
+        m_borderWidth = 2;
+        m_borderColor = "#c084fc";
+        m_showIcons = true;
+        m_iconSize = 28;
+        m_promptText = "obsidian: ";
+        m_windowWidth = 660;
         m_windowHeight = 430;
     } else if (presetName == "Dracula") {
         m_layoutMode = "list";
