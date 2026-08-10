@@ -8,8 +8,16 @@ Window {
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
-    width: Screen.width
-    height: Screen.height
+    property bool dimOverlay: typeof ThemeManager !== "undefined" && ThemeManager.enableDimOverlay
+
+    width: dimOverlay ? Screen.width : container.width
+    height: dimOverlay ? Screen.height : container.height
+
+    onActiveChanged: {
+        if (!active && visible) {
+            root.hide()
+        }
+    }
 
     function onOpened() {
         searchBar.forceActiveFocus()
@@ -25,9 +33,10 @@ Window {
         onActivated: root.hide()
     }
 
-    // Dark backdrop overlay that closes launcher on click
+    // Dark backdrop overlay (only active if dimOverlay is true)
     GlassBackground {
         anchors.fill: parent
+        visible: root.dimOverlay
         onBackgroundClicked: root.hide()
     }
 
@@ -36,7 +45,7 @@ Window {
         id: container
         width: typeof ThemeManager !== "undefined" ? ThemeManager.windowWidth : 640
         height: typeof ThemeManager !== "undefined" ? ThemeManager.windowHeight : 420
-        anchors.centerIn: parent
+        anchors.centerIn: root.dimOverlay ? parent : undefined
         radius: typeof ThemeManager !== "undefined" ? ThemeManager.borderRadius : 8
 
         color: Qt.alpha(

@@ -210,15 +210,20 @@ int main(int argc, char *argv[])
             LayerShellQt::Window *lsWindow = LayerShellQt::Window::get(rootWindow);
             if (lsWindow) {
                 lsWindow->setLayer(LayerShellQt::Window::LayerOverlay);
-                lsWindow->setAnchors(LayerShellQt::Window::Anchors(
-                                     LayerShellQt::Window::AnchorLeft | 
-                                     LayerShellQt::Window::AnchorRight | 
-                                     LayerShellQt::Window::AnchorTop | 
-                                     LayerShellQt::Window::AnchorBottom));
+                bool dim = ThemeManager::instance()->enableDimOverlay();
+                if (dim) {
+                    lsWindow->setAnchors(LayerShellQt::Window::Anchors(
+                                         LayerShellQt::Window::AnchorLeft | 
+                                         LayerShellQt::Window::AnchorRight | 
+                                         LayerShellQt::Window::AnchorTop | 
+                                         LayerShellQt::Window::AnchorBottom));
+                } else {
+                    lsWindow->setAnchors(LayerShellQt::Window::Anchors(0));
+                }
                 lsWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
                 lsWindow->setExclusiveZone(-1);
                 lsWindow->setScope(QStringLiteral("quasar"));
-                qDebug() << "LayerShellQt successfully configured.";
+                qDebug() << "LayerShellQt successfully configured. Dim overlay:" << dim;
             }
 
             // If not run with --toggle, show the launcher immediately once loaded
