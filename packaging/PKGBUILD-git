@@ -1,11 +1,13 @@
-# Maintainer: Quasar contributors
-pkgname=quasar-launcher
-pkgver=1.0.0
+# Maintainer: ArchEnjoyerakazonix <archenjoyerakazonix@users.noreply.github.com>
+pkgname=quasar-launcher-git
+pkgver=1.0.0.r0.g7443feb
 pkgrel=1
-pkgdesc="Next-generation application launcher & command palette for Wayland and X11 (Qt6/QML)"
+pkgdesc="Next-generation application launcher & command palette for Wayland and X11 (Qt6/QML) (VCS version)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/ArchEnjoyerakazonix/quasar"
 license=('MIT')
+provides=('quasar-launcher')
+conflicts=('quasar-launcher')
 depends=(
     'qt6-base'
     'qt6-declarative'
@@ -13,6 +15,7 @@ depends=(
     'hicolor-icon-theme'
 )
 makedepends=(
+    'git'
     'cmake'
     'ninja'
     'qt6-tools'
@@ -24,29 +27,29 @@ optdepends=(
     'wmctrl: window switching on X11 (w. / w: prefix)'
     'cliphist: clipboard history manager (c. / clip. prefix)'
     'wl-clipboard: clipboard utilities for Wayland'
-    'python-pywal: dynamic wallpaper color scheme sync (/wal action)'
+    'python-pywal: dynamic wallpaper color scheme sync'
     'xdg-terminal-exec: running shell commands ($) in the standard terminal'
 )
-source=("quasar-$pkgver.tar.gz")
+source=("git+https://github.com/ArchEnjoyerakazonix/quasar.git")
 sha256sums=('SKIP')
 
+pkgver() {
+    cd "${srcdir}/quasar"
+    git describe --long --tags --abbrev=7 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' ||
+    printf "1.0.0.r%s.g%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
 build() {
-    local src_dir="${srcdir}/quasar-$pkgver"
-    if [ ! -d "$src_dir" ]; then
-        src_dir="${srcdir}"
-    fi
-    cmake -B build -S "$src_dir" -G Ninja \
+    cmake -B build -S "${srcdir}/quasar" -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr
     cmake --build build
 }
 
 package() {
-    local src_dir="${srcdir}/quasar-$pkgver"
-    if [ ! -d "$src_dir" ]; then
-        src_dir="${srcdir}"
-    fi
     DESTDIR="$pkgdir" cmake --install build
-    install -Dm644 "$src_dir/assets/actions.json.example" \
+    install -Dm644 "${srcdir}/quasar/assets/actions.json.example" \
         "$pkgdir/usr/share/doc/quasar/actions.json.example"
+    install -Dm644 "${srcdir}/quasar/LICENSE" \
+        "$pkgdir/usr/share/licenses/${pkgname}/LICENSE"
 }
