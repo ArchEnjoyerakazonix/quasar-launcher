@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build & Test (Ubuntu 24.04)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            qt6-base-dev \
+            qt6-declarative-dev \
+            qt6-svg-dev \
+            qt6-tools-dev \
+            qt6-tools-dev-tools \
+            libgl1-mesa-dev \
+            libxkbcommon-dev
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=ON \
+            -DCMAKE_DISABLE_FIND_PACKAGE_LayerShellQt=ON
+
+      - name: Build Quasar
+        run: |
+          cmake --build build -j$(nproc)
+
+      - name: Run Tests (CTest)
+        run: |
+          ctest --test-dir build --output-on-failure --no-tests=error
+
+  build-archlinux:
+    name: Build & Test (Arch Linux)
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+
+    steps:
+      - name: Update system and install dependencies
+        run: |
+          pacman -Syu --noconfirm --needed \
+            base-devel \
+            git \
+            cmake \
+            ninja \
+            qt6-base \
+            qt6-declarative \
+            qt6-svg \
+            qt6-tools \
+            layer-shell-qt
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure CMake with LayerShellQt
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=ON
+
+      - name: Build Quasar
+        run: |
+          cmake --build build -j$(nproc)
+
+      - name: Run Tests (CTest)
+        run: |
+          ctest --test-dir build --output-on-failure --no-tests=error
