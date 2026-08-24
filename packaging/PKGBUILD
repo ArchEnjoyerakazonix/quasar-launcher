@@ -49,4 +49,6 @@ package() {
     DESTDIR="$pkgdir" cmake --install build
     install -Dm644 "$src_dir/assets/actions.json.example" \
         "$pkgdir/usr/share/doc/quasar/actions.json.example"
+    install -Dm644 "$src_dir/LICENSE" \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

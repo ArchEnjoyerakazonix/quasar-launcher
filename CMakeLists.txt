@@ -132,6 +132,10 @@ install(FILES assets/quasar.desktop assets/quasar-theme-selector.desktop
 install(FILES assets/icons/quasar-icon.svg RENAME quasar.svg
     DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
 )
+install(DIRECTORY assets/icons/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor
+    FILES_MATCHING PATTERN "*.png"
+)
 install(FILES assets/icons/quasar-mono-white.svg
     DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/status
 )
@@ -144,9 +148,12 @@ install(FILES assets/presets.json assets/emoji.json
 install(FILES assets/actions.json.example
     DESTINATION ${CMAKE_INSTALL_DATADIR}/quasar
 )
-install(FILES assets/scripts/calc.sh assets/scripts/clipboard.sh assets/scripts/session.sh
+install(FILES assets/scripts/session.sh
     DESTINATION ${CMAKE_INSTALL_DATADIR}/quasar/scripts
     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+)
+install(FILES LICENSE
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/quasar-launcher
 )
 
 # Defines the BUILD_TESTING option (ON by default) and enables ctest.
