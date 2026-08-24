@@ -217,20 +217,19 @@ int main(int argc, char *argv[])
                         << "compositor:" << Platform::compositorName(Platform::detectCompositor());
 
     if (QDBusConnection::sessionBus().interface()->isServiceRegistered(dbusServiceName)) {
-        for (int i = 1; i < argc; ++i) {
-            if (QString(argv[i]) == "--toggle" || QString(argv[i]) == "-t") {
-                QDBusMessage msg = QDBusMessage::createMethodCall(dbusServiceName, "/Main", "com.quasar.launcher", "toggle");
-                QDBusConnection::sessionBus().send(msg);
-                QCoreApplication::processEvents();
-                break;
-            }
-        }
+        // Daemon is already running: forward toggle request to show/hide window
+        QDBusMessage msg = QDBusMessage::createMethodCall(dbusServiceName, "/Main", "com.quasar.launcher", "toggle");
+        QDBusConnection::sessionBus().send(msg);
+        QCoreApplication::processEvents();
         return 0;
     }
 
     QCommandLineParser parser;
-    QCommandLineOption toggleOption("toggle", "Toggle launcher visibility");
+    parser.setApplicationDescription("Quasar Application Launcher");
+    QCommandLineOption toggleOption(QStringList() << "t" << "toggle", "Toggle launcher visibility");
+    QCommandLineOption daemonOption(QStringList() << "d" << "daemon", "Start in background daemon mode without opening the window");
     parser.addOption(toggleOption);
+    parser.addOption(daemonOption);
     parser.process(app);
 
     if (!QDBusConnection::sessionBus().registerService(dbusServiceName)) {
@@ -320,7 +319,7 @@ int main(int argc, char *argv[])
     };
 
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-                     &app, [&rootWindow, &showLauncher, &parser, &toggleOption](QObject *obj, const QUrl &objUrl) {
+                     &app, [&rootWindow, &showLauncher, &parser, &daemonOption](QObject *obj, const QUrl &objUrl) {
         if (!obj) {
             qCWarning(lcLauncher) << "QML failed to load url:" << objUrl;
             QCoreApplication::exit(-1);
@@ -340,8 +339,8 @@ int main(int argc, char *argv[])
                 }
             });
 
-            // If not run with --toggle, show the launcher immediately once loaded
-            if (!parser.isSet(toggleOption)) {
+            // Show the launcher immediately on initial launch unless started in background with --daemon
+            if (!parser.isSet(daemonOption)) {
                 showLauncher();
             }
         }
