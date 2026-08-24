@@ -74,7 +74,7 @@ Rectangle {
             Keys.onBacktabPressed: root.upPressed()
 
             Text {
-                text: "Search apps, windows (w:), actions (/)..."
+                text: "Search apps, math, clipboard (c.), emojis (e.), windows (w.)..."
                 color: Qt.alpha(
                     typeof ThemeManager !== "undefined" ? ThemeManager.secondaryTextColor : "#a6adc8",
                     0.5

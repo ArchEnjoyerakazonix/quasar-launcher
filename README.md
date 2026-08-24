@@ -1,163 +1,186 @@
-# Quasar Launcher
+<div align="center">
 
-Sleek rofi-style application launcher built with Qt6/QML. Works on Wayland
-(Hyprland, Sway and other layer-shell compositors) and X11 (KDE, GNOME, XFCE…),
-and adapts gracefully to whatever tools the distro provides.
+# ✦ QUASAR LAUNCHER ✦
 
-## Features
+**Next-generation, ultra-fast application launcher, command palette, and desktop intelligence hub for Wayland & X11.**
 
-- **Application Search**: Fuzzy matching with Damerau-Levenshtein distance, Cyrillic / QWERTY layout auto-translation, and frecency ranking.
-- **Live Inline Math Calculator**: Evaluate expressions in real-time (`125 * 8`, `(50 + 25) / 3`, `sqrt(144)`, `2^8`, `sin(pi/2)`) — press Enter to copy the answer.
-- **Emoji & Unicode Picker**: Fast search across 1800+ emojis and symbols with tags (`e.fire`, `emoji:cat`, `:rocket`, `e.tux`).
-- **Smart Clipboard History**: Instant clipboard viewer & search with image / color preview (`c.`, `clip.`, `cb.`) powered by `cliphist` / `wl-paste`.
-- **Window Switching**: Fast window switcher (`w.` / `w:` / `window:`) supporting Hyprland, Sway, and X11 (`wmctrl`).
-- **Slash Actions & Pipe Plugins**: Command execution from `/` (e.g. `/wal`, `/dark`, `/screenshot`) and dmenu-style pipe scripts (`actions.json`).
-- **Shell Command Runner**: Run commands (`$cmd`, `>cmd`) in any detected terminal (`ghostty`, `kitty`, `alacritty`, `foot`, `ptyxis`, `konsole`, etc.).
-- **Web Search**: Query search with default system browser (`?query`, `g:query`, `web:query`).
-- **Dynamic Pywal / Matugen Theme Sync**: Sync Quasar theme with wallpaper colors on the fly (`/wal` or `ThemeManager::syncPywal`).
-- **33+ Built-in Glassmorphism Themes**: Live real-time tuning and customization via `quasar-theme-selector`.
-- **Single Instance D-Bus Daemon**: Lightning-fast toggle (`quasar --toggle` or `quasar -t`).
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=c%2B%2B)](https://en.cppreference.com/w/cpp/20)
+[![Qt6](https://img.shields.io/badge/Qt-6.6+-41CD52?style=flat-square&logo=qt)](https://www.qt.io/)
+[![Wayland](https://img.shields.io/badge/Wayland-Layer--Shell-brightgreen?style=flat-square&logo=wayland)](https://wayland.freedesktop.org/)
+[![X11](https://img.shields.io/badge/X11-EWMH-blue?style=flat-square&logo=xorg)](https://www.x.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-## Query Prefixes & Shortcuts
+</div>
 
-| Prefix | Mode | Example |
-|---|---|---|
-| *(none)* | App Search & Math | `firefox`, `stema`, `125 * 8`, `sqrt(144)` |
-| `e.` / `emoji.` / `:` | Emoji & Symbols Picker | `e.fire`, `emoji:cat`, `:rocket` |
-| `c.` / `clip.` / `cb.` | Clipboard History | `c.`, `c.token`, `clip:url` |
-| `w.` / `w:` / `window:` | Active Window Switcher | `w.fire`, `w:code`, `window:terminal` |
-| `/` | Slash Actions & Pipe Plugins | `/wal`, `/dark`, `/calc`, `/screenshot` |
-| `$` / `>` | Shell Command in Terminal | `$btop`, `>ping -c 3 google.com` |
-| `?` / `g:` / `web:` | Web Search in Default Browser | `?arch linux wiki`, `web:github` |
+---
 
-## Build
+## 🌟 Overview
 
-```sh
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
-cmake --build build
+**Quasar** is a modern, zero-config application launcher and command palette built with **C++20** and **Qt6 / QML**. Designed to replace legacy, complex launchers with a fluid, glassmorphic experience that works out of the box with zero manual configuration.
+
+Whether you run **Hyprland**, **Sway**, **KDE Plasma**, **GNOME**, or **XFCE**, Quasar natively adapts to your desktop compositor with smooth animations, hardware-accelerated rendering, and comprehensive subsystem integrations.
+
+---
+
+## ✨ Features
+
+- ⚡ **Instant Fuzzy Matching**: Powered by Damerau-Levenshtein distance matching and intelligent Cyrillic $\leftrightarrow$ QWERTY layout auto-translation (e.g. typing `stema` or `сркщьу` automatically matches *Google Chrome*).
+- 📈 **Frecency Ranking**: Smart scoring that tracks application launch frequency and recency, putting your most-used apps at the top without cluttering the view.
+- 🧮 **Live Inline Math Calculator**: Evaluate expressions in real time (`125 * 8`, `sqrt(256)`, `(50 + 25) / 3`, `2^10`, `sin(pi/2)`) — press <kbd>Enter</kbd> to copy the formatted result directly to your clipboard.
+- 📋 **Integrated Clipboard Manager**: Browse, search, and restore clipboard history (`c.`) with live color chip previews, powered by `cliphist` on Wayland and `QClipboard` on X11.
+- 😀 **Emoji & Symbol Picker**: Fast search across 1800+ Unicode emojis and symbols with tags (`e.fire`, `emoji:rocket`, `:cat`) and instant copy.
+- 🪟 **Active Window Switcher**: Switch windows across all workspaces (`w.`, `w:`, `window:`) with native IPC for Hyprland (`hyprctl`), Sway (`swaymsg`), and X11 (`wmctrl`).
+- 🎨 **73 Designer Themes & Live Customizer**: Built-in glassmorphism, cyberpunk neon, retro terminal, and minimal palettes. Tune accent colors, opacity, blur, and borders in real-time with `quasar-theme-selector`.
+- 🪄 **Dynamic Pywal Wallpaper Sync**: Instantly harmonize Quasar colors with your current desktop wallpaper via `/wal` or `ThemeManager`.
+- 🖥️ **Smart Command Runner**: Execute shell commands (`$`, `>`) in your preferred terminal emulator (auto-detects `ghostty`, `kitty`, `alacritty`, `foot`, `wezterm`, `konsole`, `gnome-terminal`, etc.).
+- 🌐 **Web Search Integration**: Query the web with default browser routing (`?`, `g:`, `web:`) via standard FreeDesktop / XDG handlers.
+- 🔌 **Extensible Slash Actions & Pipe Plugins**: Custom JSON actions and dmenu-compatible pipe scripts (`/`) for custom workflows (session management, password store, screenshot hubs).
+- 🚀 **Single-Instance D-Bus Daemon**: Lightning-fast toggle latency (<10ms) via D-Bus IPC (`quasar --toggle`).
+
+---
+
+## ⚡ Shortcuts & Query Prefixes
+
+Quasar uses intuitive prefix shortcuts to switch modes seamlessly without needing separate keybinds:
+
+| Prefix | Mode | Example | Description |
+|---|---|---|---|
+| *(none)* | **App Search & Math** | `firefox`, `stema`, `125 * 8`, `sqrt(144)` | Fuzzy app finder and real-time inline calculator |
+| `c.` / `clip.` / `cb.` | **Clipboard Manager** | `c.`, `c.token`, `clip:url` | Search clipboard history with color & text previews |
+| `e.` / `emoji.` / `:` | **Emoji Picker** | `e.fire`, `emoji:rocket`, `:tux` | Search 1800+ emojis and copy to clipboard |
+| `w.` / `w:` / `window:` | **Window Switcher** | `w.code`, `w:browser`, `window:term` | Focus open windows across workspaces |
+| `/` | **Slash Actions & Plugins** | `/theme`, `/wal`, `/dark`, `/session`, `/lock` | Trigger system actions and dmenu pipe scripts |
+| `$` / `>` | **Shell Command** | `$btop`, `>ping -c 3 archlinux.org` | Run commands in your default terminal |
+| `?` / `g:` / `web:` | **Web Search** | `?arch wiki`, `g:rust docs`, `web:github` | Open search queries in your default browser |
+
+---
+
+## 🛠️ Installation
+
+### 1. Arch Linux / Manjaro / EndeavourOS
+
+#### Local PKGBUILD:
+```bash
+git clone https://github.com/ArchEnjoyerakazonix/quasar.git
+cd quasar/packaging
+makepkg -si
 ```
 
-LayerShellQt is optional: without it the launcher builds and runs in fallback
-mode (frameless centered window). With it, the launcher becomes a proper
-layer-shell overlay on Wayland.
+---
 
-### Build dependencies
+### 2. Building from Source (All Distributions)
 
-| Distro | Packages |
-|---|---|
-| Arch / Manjaro | `qt6-base qt6-declarative qt6-svg cmake ninja layer-shell-qt` |
-| Ubuntu 24.04+ / Debian trixie+ | `qt6-base-dev qt6-declarative-dev qt6-svg-dev cmake ninja-build liblayershellqtinterface-dev qml6-module-qtqml qml6-module-qtqml-workerscript qml6-module-qtqml-models qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-templates qml6-module-qtquick-window qml6-module-qtquick-shapes` |
-| Fedora 40+ | `qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel qt6-qtsvg-devel cmake ninja-build gcc-c++` |
+#### Dependencies:
+- **C++20 compiler** (`gcc` 11+ or `clang` 14+)
+- **CMake** 3.20+ & **Ninja**
+- **Qt6**: `qt6-base`, `qt6-declarative`, `qt6-svg`
+- *(Optional on Wayland)*: `layer-shell-qt` (for native Wayland overlay positioning)
 
-Note: on distros where `liblayershellqtinterface-dev` / `layer-shell-qt-devel`
-is unavailable, simply omit it — CMake will warn and continue without layer-shell.
+#### Build commands:
+```bash
+git clone https://github.com/ArchEnjoyerakazonix/quasar.git
+cd quasar
 
-### Install
+# Configure & compile
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build build -j$(nproc)
 
-```sh
+# Install
 sudo cmake --install build
 ```
 
-Or on Arch/Manjaro: `makepkg -si` from `packaging/`.
+---
 
-## Runtime dependencies
+## ⌨️ Desktop & Window Manager Integration
 
-The launcher degrades gracefully when a tool is missing — the related feature
-is hidden or disabled, nothing crashes:
+Bind `quasar --toggle` to your preferred hotkey:
 
-| Tool | Feature | Fallback when missing |
-|---|---|---|
-| `hyprctl` | `w:` window list on Hyprland | next backend (swaymsg / wmctrl), feature disabled |
-| `swaymsg` | `w:` window list on Sway | next backend, feature disabled |
-| `wmctrl` | `w:` window list on X11 | feature disabled |
-| terminal emulator | `$command` runner | `$TERMINAL`, `xdg-terminal-exec`, konsole, gnome-terminal, kgx, kitty, alacritty, wezterm, foot, xterm |
-| `gsettings` | `/dark`, `/light` default actions | actions hidden |
-| `cliphist` | `/wipeclipboard` default action | action hidden |
+### Hyprland (`~/.config/hypr/hyprland.conf`):
+```ini
+# Toggle Quasar Launcher
+bind = $mainMod, SPACE, exec, quasar --toggle
 
-## Configuration
+# Toggle Quasar Theme Selector
+bind = $mainMod SHIFT, T, exec, quasar-theme-selector
+```
 
-- `~/.config/quasar/theme.json` — current theme (written by the theme selector)
-- `~/.config/quasar/actions.json` — custom slash actions. When present it fully
-  replaces the built-in defaults. See `assets/actions.json.example`:
+### Sway (`~/.config/sway/config`):
+```ini
+bindsym $mod+Space exec quasar --toggle
+bindsym $mod+Shift+t exec quasar-theme-selector
+```
+
+### i3 / X11 (`~/.config/i3/config`):
+```ini
+bindsym $mod+space exec --no-startup-id quasar --toggle
+```
+
+### KDE Plasma / GNOME:
+Set a custom global shortcut in **Settings $\rightarrow$ Keyboard $\rightarrow$ Shortcuts** pointing to `quasar --toggle`.
+
+---
+
+## 🎨 Theming & Customization
+
+### Interactive Theme Selector
+Launch `quasar-theme-selector` or type `/theme` in Quasar to open the live visual customizer:
+- Browse **73 handcrafted presets** (Cyberpunk Neon, Tokyo Night, Catppuccin Mocha, Dracula, Monokai, Nord, Gruvbox, Solarized, Paper Minimal, etc.).
+- Fine-tune window width, height, border radius, background opacity, card glow, font family, and font size in real time.
+- All configurations are saved cleanly in `~/.config/quasar/theme.json`.
+
+### Dynamic Wallpaper Sync (Pywal / Matugen)
+If you use `pywal` or generate color schemes in `~/.cache/wal/colors.json`, simply type `/wal` in Quasar to sync its entire palette to your current wallpaper instantly.
+
+---
+
+## 🔌 Custom Actions & Pipe Plugins
+
+You can define custom slash commands and dmenu-style pipe scripts in `~/.config/quasar/actions.json`:
 
 ```json
 [
     {
+        "name": "/theme",
+        "command": "quasar-theme-selector",
+        "icon": "preferences-desktop-theme",
+        "description": "Open Quasar Theme Selector"
+    },
+    {
+        "name": "/wal",
+        "command": "quasar --sync-wal",
+        "icon": "preferences-desktop-wallpaper",
+        "description": "Sync palette with current wallpaper"
+    },
+    {
         "name": "/lock",
         "command": "loginctl lock-session",
         "icon": "system-lock-screen",
-        "description": "Lock the current session"
+        "description": "Lock current desktop session"
+    },
+    {
+        "name": "/session",
+        "type": "pipe",
+        "command": "@scripts/session.sh",
+        "icon": "system-shutdown",
+        "description": "Power management & session controls"
     }
 ]
 ```
 
-Actions whose command binary is not found in `$PATH` are hidden automatically.
+---
 
-### Pipe plugins (dmenu mode / rofi script mode)
+## 🛠️ Testing & Quality Assurance
 
-An action with `"type": "pipe"` turns any script into a dynamic, multi-step
-menu — the same protocol as rofi's script mode:
+Quasar comes with a comprehensive CTest suite covering fuzzy ranking, keyboard layout translation, mathematics evaluation, and theme management:
 
-1. **First call** (typing the action name, e.g. `/session`) runs the command
-   with no arguments; each stdout line becomes a selectable item. Text after
-   the name filters the lines (`/windows fire`).
-2. **Round-trip** (selecting a line) re-invokes the same command with the
-   selected line as `$1`. If it prints new lines, the menu is replaced
-   (multi-step navigation); if it prints nothing, the script performed the
-   action itself and the launcher closes.
-
-An action with `"input": "query"` additionally receives the query remainder
-as `$1` on the first call (e.g. `/calc 2+2` → `calc.sh "2+2"`); line filtering
-is disabled for such actions.
-
-```json
-{
-    "name": "/calc",
-    "type": "pipe",
-    "input": "query",
-    "command": "@scripts/calc.sh",
-    "icon": "accessories-calculator",
-    "description": "Evaluate an expression; pick the result to copy it"
-}
-```
-
-The `@scripts/` prefix resolves bundled scripts from `~/.config/quasar/scripts/`
-or the installed `share/quasar/scripts/`. Bundled out of the box:
-`calc.sh` (calculator → copies result), `clipboard.sh` (cliphist browser),
-`session.sh` (Lock / Log out / Suspend / Reboot / Power off).
-
-### User themes
-
-Built-in themes live in `assets/presets.json`. Drop your own JSON files into
-`~/.config/quasar/themes/` — each becomes a selectable preset (the `"name"`
-field or the file name is used as the preset name).
-
-### Flatpak
-
-A build manifest is provided in `packaging/com.quasar.launcher.json`
-(org.kde.Sdk 6.11):
-
-```sh
-flatpak-builder --user --install --install-deps-from=flathub \
-    --force-clean build-flat packaging/com.quasar.launcher.json
-flatpak run com.quasar.launcher
-```
-
-Note: the Flatpak build ships without layer-shell (the sandboxed
-layer-shell plugin conflicts with the SDK's Qt platform build — the launcher
-runs as a regular frameless always-on-top window there). Native packages
-keep the full layer-shell overlay experience on Wayland.
-
-## Debugging
-
-Logging uses Qt categories; enable with:
-
-```sh
-QT_LOGGING_RULES="quasar.*.debug=true" quasar
-```
-
-## Tests
-
-```sh
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ctest --test-dir build --output-on-failure
 ```
+
+---
+
+## 📄 License
+
+Quasar is distributed under the terms of the **MIT License**. See [LICENSE](LICENSE) for details.

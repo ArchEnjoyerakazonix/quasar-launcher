@@ -1,9 +1,15 @@
 [
     {
-        "name": "/accentcolor",
+        "name": "/theme",
         "command": "quasar-theme-selector",
-        "icon": "color-management",
+        "icon": "preferences-desktop-theme",
         "description": "Open Quasar Theme Selector & Customizer"
+    },
+    {
+        "name": "/wal",
+        "command": "quasar --sync-wal",
+        "icon": "preferences-desktop-wallpaper",
+        "description": "Sync palette with current wallpaper (Pywal)"
     },
     {
         "name": "/dark",
@@ -24,33 +30,23 @@
         "description": "Lock the current session"
     },
     {
-        "name": "/calc",
-        "type": "pipe",
-        "input": "query",
-        "command": "@scripts/calc.sh",
-        "icon": "accessories-calculator",
-        "description": "Evaluate an expression; pick the result to copy it"
+        "name": "/terminal",
+        "command": "kitty",
+        "icon": "utilities-terminal",
+        "description": "Launch Terminal"
     },
     {
-        "name": "/clipboard",
-        "type": "pipe",
-        "command": "@scripts/clipboard.sh",
-        "icon": "edit-paste",
-        "description": "Browse clipboard history (cliphist)"
+        "name": "/wipeclipboard",
+        "command": "cliphist wipe",
+        "icon": "edit-clear",
+        "description": "Wipe clipboard history"
     },
     {
         "name": "/session",
         "type": "pipe",
         "command": "@scripts/session.sh",
         "icon": "system-shutdown",
-        "description": "Lock / Log out / Suspend / Reboot / Power off"
-    },
-    {
-        "name": "/windows",
-        "type": "pipe",
-        "command": "hyprctl clients -j | jq -r '.[].class' | sort -u",
-        "icon": "window-duplicate",
-        "description": "List window classes"
+        "description": "Power management & session controls"
     },
     {
         "name": "/pass",
