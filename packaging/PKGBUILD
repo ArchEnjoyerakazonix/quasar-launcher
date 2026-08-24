@@ -4,7 +4,7 @@ pkgver=1.0.0
 pkgrel=1
 pkgdesc="Next-generation application launcher & command palette for Wayland and X11 (Qt6/QML)"
 arch=('x86_64' 'aarch64')
-url="https://github.com/ArchEnjoyerakazonix/quasar"
+url="https://github.com/ArchEnjoyerakazonix/quasar-launcher"
 license=('MIT')
 depends=(
     'qt6-base'

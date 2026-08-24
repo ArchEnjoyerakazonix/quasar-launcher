@@ -4,7 +4,7 @@ pkgver=1.0.0.r0.g7443feb
 pkgrel=1
 pkgdesc="Next-generation application launcher & command palette for Wayland and X11 (Qt6/QML) (VCS version)"
 arch=('x86_64' 'aarch64')
-url="https://github.com/ArchEnjoyerakazonix/quasar"
+url="https://github.com/ArchEnjoyerakazonix/quasar-launcher"
 license=('MIT')
 provides=('quasar-launcher')
 conflicts=('quasar-launcher')
@@ -30,7 +30,7 @@ optdepends=(
     'python-pywal: dynamic wallpaper color scheme sync'
     'xdg-terminal-exec: running shell commands ($) in the standard terminal'
 )
-source=("git+https://github.com/ArchEnjoyerakazonix/quasar.git")
+source=("git+https://github.com/ArchEnjoyerakazonix/quasar-launcher.git")
 sha256sums=('SKIP')
 
 pkgver() {
