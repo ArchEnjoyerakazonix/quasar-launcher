@@ -98,9 +98,9 @@ qt_add_qml_module(quasar-theme-selector
     URI com.quasar.themeselector
     VERSION 1.0
     QML_FILES
-        theme_selector/SelectorMain.qml
-        theme_selector/ColorPickerRow.qml
-        theme_selector/PresetButton.qml
+        qml/theme_selector/SelectorMain.qml
+        qml/theme_selector/ColorPickerRow.qml
+        qml/theme_selector/PresetButton.qml
     RESOURCES
         assets/presets.json
 )
