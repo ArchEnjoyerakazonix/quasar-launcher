@@ -31,11 +31,11 @@ Whether you run **Hyprland**, **Sway**, **KDE Plasma**, **GNOME**, or **XFCE**, 
 - 😀 **Emoji & Symbol Picker**: Fast search across 1800+ Unicode emojis and symbols with tags (`e.fire`, `emoji:rocket`, `:cat`) and instant copy.
 - 🪟 **Active Window Switcher**: Switch windows across all workspaces (`w.`, `w:`, `window:`) with native IPC for Hyprland (`hyprctl`), Sway (`swaymsg`), and X11 (`wmctrl`).
 - 🎨 **73 Designer Themes & Live Customizer**: Built-in glassmorphism, cyberpunk neon, retro terminal, and minimal palettes. Tune accent colors, opacity, blur, and borders in real-time with `quasar-theme-selector`.
-- 🪄 **Dynamic Pywal Wallpaper Sync**: Instantly harmonize Quasar colors with your current desktop wallpaper via `/wal` or `ThemeManager`.
+- 🪄 **Dynamic Pywal Wallpaper Sync**: Instantly harmonize Quasar colors with your current desktop wallpaper on the fly.
 - 🖥️ **Smart Command Runner**: Execute shell commands (`$`, `>`) in your preferred terminal emulator (auto-detects `ghostty`, `kitty`, `alacritty`, `foot`, `wezterm`, `konsole`, `gnome-terminal`, etc.).
 - 🌐 **Web Search Integration**: Query the web with default browser routing (`?`, `g:`, `web:`) via standard FreeDesktop / XDG handlers.
 - 🔌 **Extensible Slash Actions & Pipe Plugins**: Custom JSON actions and dmenu-compatible pipe scripts (`/`) for custom workflows (session management, password store, screenshot hubs).
-- 🚀 **Single-Instance D-Bus Daemon**: Lightning-fast toggle latency (<10ms) via D-Bus IPC (`quasar --toggle`).
+- 🚀 **Single-Instance D-Bus Daemon**: Sub-millisecond toggle responsiveness via memory-resident D-Bus IPC service (`quasar --toggle`).
 
 ---
 
@@ -49,7 +49,7 @@ Quasar uses intuitive prefix shortcuts to switch modes seamlessly without needin
 | `c.` / `clip.` / `cb.` | **Clipboard Manager** | `c.`, `c.token`, `clip:url` | Search clipboard history with color & text previews |
 | `e.` / `emoji.` / `:` | **Emoji Picker** | `e.fire`, `emoji:rocket`, `:tux` | Search 1800+ emojis and copy to clipboard |
 | `w.` / `w:` / `window:` | **Window Switcher** | `w.code`, `w:browser`, `window:term` | Focus open windows across workspaces |
-| `/` | **Slash Actions & Plugins** | `/theme`, `/wal`, `/dark`, `/session`, `/lock` | Trigger system actions and dmenu pipe scripts |
+| `/` | **Slash Actions & Plugins** | `/screenshot`, `/pass`, `/myaction` | Trigger user-defined actions and dmenu pipe scripts |
 | `$` / `>` | **Shell Command** | `$btop`, `>ping -c 3 archlinux.org` | Run commands in your default terminal |
 | `?` / `g:` / `web:` | **Web Search** | `?arch wiki`, `g:rust docs`, `web:github` | Open search queries in your default browser |
 
@@ -140,29 +140,17 @@ You can define custom slash commands and dmenu-style pipe scripts in `~/.config/
 ```json
 [
     {
-        "name": "/theme",
-        "command": "quasar-theme-selector",
-        "icon": "preferences-desktop-theme",
-        "description": "Open Quasar Theme Selector"
+        "name": "/screenshot",
+        "command": "grimblast copy area",
+        "icon": "camera-photo",
+        "description": "Capture region screenshot to clipboard"
     },
     {
-        "name": "/wal",
-        "command": "quasar --sync-wal",
-        "icon": "preferences-desktop-wallpaper",
-        "description": "Sync palette with current wallpaper"
-    },
-    {
-        "name": "/lock",
-        "command": "loginctl lock-session",
-        "icon": "system-lock-screen",
-        "description": "Lock current desktop session"
-    },
-    {
-        "name": "/session",
+        "name": "/pass",
         "type": "pipe",
-        "command": "@scripts/session.sh",
-        "icon": "system-shutdown",
-        "description": "Power management & session controls"
+        "command": "cd ~/.local/share/password-store && find . -name '*.gpg' | sed 's|.*/||; s|\\.gpg$||'",
+        "icon": "dialog-password",
+        "description": "Browse password store"
     }
 ]
 ```
@@ -178,6 +166,12 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
+
+---
+
+## 🔒 Security
+
+For threat models, IPC isolation details, and responsible vulnerability reporting, please see [SECURITY.md](SECURITY.md).
 
 ---
 
