@@ -201,4 +201,8 @@ qt_add_executable(test_actionmodel
 )
 target_link_libraries(test_actionmodel PRIVATE Qt6::Core Qt6::Gui Qt6::Test)
 add_test(NAME test_actionmodel COMMAND test_actionmodel)
+
+set_tests_properties(test_fuzzymatcher test_thememanager test_actionmodel
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+)
 endif()
