@@ -1,0 +1,32 @@
+FROM fedora:40
+
+ENV QT_QPA_PLATFORM=offscreen
+
+RUN dnf -y update && dnf -y install \
+    gcc-c++ \
+    cmake \
+    ninja-build \
+    qt6-qtbase-devel \
+    qt6-qtdeclarative-devel \
+    qt6-qtquickcontrols2-devel \
+    qt6-qtsvg-devel \
+    mesa-dri-drivers \
+    xorg-x11-server-Xvfb \
+    dbus-daemon \
+    dbus-x11 \
+    bc \
+    hicolor-icon-theme \
+    && dnf clean all
+
+WORKDIR /src
+COPY . /src
+
+RUN mkdir -p /src/build && \
+    cmake -B /src/build -S /src -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr && \
+    cmake --build /src/build && \
+    ctest --test-dir /src/build --output-on-failure && \
+    cmake --install /src/build
+
+RUN chmod +x /src/tests/containers/entrypoint_test.sh
+
+ENTRYPOINT ["/src/tests/containers/entrypoint_test.sh"]

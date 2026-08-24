@@ -1,0 +1,6 @@
+build/
+build-flat/
+.flatpak-builder/
+.git/
+test_output.log
+*.log

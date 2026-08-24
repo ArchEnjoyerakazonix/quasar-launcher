@@ -1,0 +1,62 @@
+[
+    {
+        "name": "/accentcolor",
+        "command": "quasar-theme-selector",
+        "icon": "color-management",
+        "description": "Open Quasar Theme Selector & Customizer"
+    },
+    {
+        "name": "/dark",
+        "command": "gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'",
+        "icon": "weather-clear-night",
+        "description": "Switch system color scheme to Dark mode"
+    },
+    {
+        "name": "/light",
+        "command": "gsettings set org.gnome.desktop.interface color-scheme 'default'",
+        "icon": "weather-clear",
+        "description": "Switch system color scheme to Light mode"
+    },
+    {
+        "name": "/lock",
+        "command": "loginctl lock-session",
+        "icon": "system-lock-screen",
+        "description": "Lock the current session"
+    },
+    {
+        "name": "/calc",
+        "type": "pipe",
+        "input": "query",
+        "command": "@scripts/calc.sh",
+        "icon": "accessories-calculator",
+        "description": "Evaluate an expression; pick the result to copy it"
+    },
+    {
+        "name": "/clipboard",
+        "type": "pipe",
+        "command": "@scripts/clipboard.sh",
+        "icon": "edit-paste",
+        "description": "Browse clipboard history (cliphist)"
+    },
+    {
+        "name": "/session",
+        "type": "pipe",
+        "command": "@scripts/session.sh",
+        "icon": "system-shutdown",
+        "description": "Lock / Log out / Suspend / Reboot / Power off"
+    },
+    {
+        "name": "/windows",
+        "type": "pipe",
+        "command": "hyprctl clients -j | jq -r '.[].class' | sort -u",
+        "icon": "window-duplicate",
+        "description": "List window classes"
+    },
+    {
+        "name": "/pass",
+        "type": "pipe",
+        "command": "cd ~/.local/share/password-store && find . -name '*.gpg' | sed 's|.*/||; s|\\.gpg$||'",
+        "icon": "dialog-password",
+        "description": "Browse pass entries"
+    }
+]

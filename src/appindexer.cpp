@@ -1,4 +1,6 @@
 #include "appindexer.h"
+#include "thememanager.h"
+#include "platform.h"
 
 #include <QDir>
 #include <QFile>
@@ -8,6 +10,10 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QRegularExpression>
 #include <QFileInfo>
+#include <QGuiApplication>
+#include <QClipboard>
+#include <QDesktopServices>
+#include <QUrl>
 
 AppIndexer::AppIndexer(QObject *parent)
     : QAbstractListModel(parent)
@@ -95,37 +101,125 @@ QHash<int, QByteArray> AppIndexer::roleNames() const
 
 #include <QDesktopServices>
 #include <QUrl>
+#include <QTimer>
+#include "platform.h"
+#include "logging.h"
 
 void AppIndexer::launch(const QString& execStr)
 {
     QString exec = execStr.trimmed();
     if (exec.isEmpty()) return;
 
-    // 1. Web search launch
-    if (exec.startsWith("__web__:") || exec == "__web__") {
-        QString query = exec.startsWith("__web__:") ? exec.mid(8).trimmed() : QString();
+    // 0. Window switching (w: or window: query selection)
+    if (exec.startsWith("address:")) {
+        QString clean = exec.mid(8).trimmed();
+        QString addr = clean;
+        QString ws;
+        int sep = clean.indexOf('|');
+        if (sep != -1) {
+            addr = clean.left(sep).trimmed();
+            QString extra = clean.mid(sep + 1).trimmed();
+            if (extra.startsWith("workspace:")) {
+                ws = extra.mid(10).trimmed();
+            }
+        }
+
+        QTimer::singleShot(40, [addr, ws]() {
+            QString luaCmd;
+            if (!ws.isEmpty()) {
+                luaCmd = QString("hl.dispatch(hl.dsp.focus({ workspace = '%1' })); hl.dispatch(hl.dsp.focus({ window = 'address:%2' }))").arg(ws, addr);
+            } else {
+                luaCmd = QString("hl.dispatch(hl.dsp.focus({ window = 'address:%1' }))").arg(addr);
+            }
+            Platform::detachedStart("hyprctl", {"eval", luaCmd});
+            Platform::detachedStart("swaymsg", {"[con_id=" + addr + "] focus"});
+            if (Platform::haveBinary("wmctrl")) {
+                Platform::detachedStart("wmctrl", {"-i", "-a", addr});
+            }
+        });
+        return;
+    }
+
+    // 0. Copy to clipboard action (__copy__:<text>)
+    if (exec.startsWith(QLatin1String("__copy__:"))) {
+        QString toCopy = exec.mid(9);
+        if (QClipboard *clipboard = QGuiApplication::clipboard()) {
+            clipboard->setText(toCopy);
+        }
+        if (Platform::haveBinary(QStringLiteral("wl-copy"))) {
+            QProcess proc;
+            proc.start(QStringLiteral("wl-copy"), {});
+            if (proc.waitForStarted(500)) {
+                proc.write(toCopy.toUtf8());
+                proc.closeWriteChannel();
+                proc.waitForFinished(500);
+            }
+        }
+        return;
+    }
+
+    // 0.1 Clipboard restore action (__clipboard__:<index>)
+    if (exec.startsWith(QLatin1String("__clipboard__:"))) {
+        QString itemRef = exec.mid(14).trimmed();
+        if (Platform::haveBinary(QStringLiteral("cliphist"))) {
+            QString cmd = QStringLiteral("cliphist decode %1 | wl-copy").arg(itemRef);
+            Platform::detachedStart(QStringLiteral("bash"), {QStringLiteral("-c"), cmd});
+        }
+        return;
+    }
+
+    // 0.2 Pywal action trigger
+    if (exec == QLatin1String("/pywal") || exec == QLatin1String("/wal")) {
+        ThemeManager::instance()->syncPywal();
+        return;
+    }
+
+    // 1. Web search launch (browser search & URLs)
+    if (exec.startsWith("__web__:") || exec == "__web__" || exec.startsWith("http://") || exec.startsWith("https://") || exec.startsWith("www.")) {
+        QString query = exec.startsWith("__web__:") ? exec.mid(8).trimmed() : exec.trimmed();
         if (query.startsWith("?")) query = query.mid(1).trimmed();
         if (query.startsWith("g:")) query = query.mid(2).trimmed();
         if (query.startsWith("web:")) query = query.mid(4).trimmed();
+        if (query.startsWith("b:")) query = query.mid(2).trimmed();
+        if (query.startsWith("browser:")) query = query.mid(8).trimmed();
+        if (query.startsWith("google:")) query = query.mid(7).trimmed();
+        if (query.startsWith("chrome:")) query = query.mid(7).trimmed();
+        if (query.startsWith("search:")) query = query.mid(7).trimmed();
+        if (query.startsWith("find:")) query = query.mid(5).trimmed();
         if (query.isEmpty()) return;
 
-        QString encoded = QString::fromUtf8(QUrl::toPercentEncoding(query.toUtf8()));
-        QString searchUrl = "https://www.google.com/search?q=" + encoded;
-        QProcess::startDetached("xdg-open", QStringList() << searchUrl);
+        QString targetUrl;
+        if (query.startsWith("http://") || query.startsWith("https://")) {
+            targetUrl = query;
+        } else if (query.startsWith("www.")) {
+            targetUrl = "https://" + query;
+        } else {
+            QString encoded = QString::fromUtf8(QUrl::toPercentEncoding(query.toUtf8()));
+            targetUrl = "https://www.google.com/search?q=" + encoded;
+        }
+        // Universal default browser launch using XDG / FreeDesktop / Qt URL Handler
+        QDesktopServices::openUrl(QUrl(targetUrl));
         return;
     }
 
     // 2. Shell command launch
-    if (exec.startsWith("__shell__:") || exec.startsWith("$")) {
+    if (exec.startsWith("__shell__:") || exec.startsWith("$") || exec.startsWith(">")) {
         QString cmd = exec.startsWith("__shell__:") ? exec.mid(10).trimmed() : exec.mid(1).trimmed();
         if (cmd.isEmpty()) return;
-        QProcess::startDetached("kitty", QStringList() << "-1" << "bash" << "-c" << (cmd + "; read -p 'Press enter to exit...'"));
+        
+        QString innerCmd = cmd + "; printf '\\n\\e[1;36m[Process finished. Press Enter to exit]\\e[0m\\n'; read _";
+        const QString termCmd = Platform::terminalCommand(innerCmd);
+        if (!termCmd.isEmpty()) {
+            Platform::detachedStart("bash", {"-c", termCmd});
+        } else {
+            Platform::detachedStart("bash", {"-c", cmd});
+        }
         return;
     }
 
     // 3. Slash action command launch
     if (exec.startsWith("/")) {
-        QProcess::startDetached("bash", QStringList() << "-c" << exec);
+        Platform::detachedStart("bash", {"-c", exec});
         return;
     }
 
@@ -138,7 +232,7 @@ void AppIndexer::launch(const QString& execStr)
         QStringList args = QProcess::splitCommand(exec);
         if (!args.isEmpty()) {
             QString program = args.takeFirst();
-            QProcess::startDetached(program, args);
+            Platform::detachedStart(program, args);
         }
     }
 }
@@ -182,7 +276,7 @@ void AppIndexer::onScanFinished()
     m_apps = std::move(newApps);
     endResetModel();
 
-    qDebug() << "AppIndexer: Successfully scanned" << m_apps.size() << "applications.";
+    qCDebug(lcIndexer) << "successfully scanned" << m_apps.size() << "applications";
 
     emit filteredCountChanged();
 }

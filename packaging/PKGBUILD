@@ -1,0 +1,52 @@
+# Maintainer: Quasar contributors
+pkgname=quasar-launcher
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Sleek rofi-style application launcher for Wayland and X11 (Qt6/QML)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/quasar-launcher/quasar"
+license=('MIT')
+depends=(
+    'qt6-base'
+    'qt6-declarative'
+    'qt6-svg'
+    'hicolor-icon-theme'
+)
+makedepends=(
+    'cmake'
+    'ninja'
+    'qt6-tools'
+    'layer-shell-qt'
+)
+optdepends=(
+    'hyprland: window switching on Hyprland (w. / w: prefix)'
+    'sway: window switching on Sway (w. / w: prefix)'
+    'wmctrl: window switching on X11 (w. / w: prefix)'
+    'cliphist: clipboard history manager (c. / clip. prefix)'
+    'wl-clipboard: clipboard utilities for Wayland'
+    'python-pywal: dynamic wallpaper color scheme sync (/wal action)'
+    'xdg-terminal-exec: running shell commands ($) in the standard terminal'
+)
+source=("quasar-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    local src_dir="${srcdir}/quasar-$pkgver"
+    if [ ! -d "$src_dir" ]; then
+        src_dir="${srcdir}"
+    fi
+    cmake -B build -S "$src_dir" -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build
+}
+
+package() {
+    local src_dir="${srcdir}/quasar-$pkgver"
+    if [ ! -d "$src_dir" ]; then
+        src_dir="${srcdir}"
+    fi
+    DESTDIR="$pkgdir" cmake --install build
+    install -Dm644 "$src_dir/assets/actions.json.example" \
+        "$pkgdir/usr/share/doc/quasar/actions.json.example"
+}

@@ -84,12 +84,41 @@ private slots:
         QString matchedName1 = matcher.data(idx1, Qt::UserRole + 1).toString();
         QCOMPARE(matchedName1, QString::fromUtf8("Привет"));
 
-        // Acronym query: "ff" -> "Firefox Web Browser"
-        matcher.setQuery("ff");
+        // Acronym query: "fwb" -> "Firefox Web Browser"
+        matcher.setQuery("fwb");
         QCOMPARE(matcher.rowCount() > 0, true);
         QModelIndex idx2 = matcher.index(0, 0);
         QString matchedName2 = matcher.data(idx2, Qt::UserRole + 1).toString();
         QCOMPARE(matchedName2, QString("Firefox Web Browser"));
+    }
+
+    void testWindowPrefixStripsScheme() {
+        QStandardItemModel sourceModel;
+        QHash<int, QByteArray> roles;
+        roles[Qt::UserRole + 1] = "name";
+        roles[Qt::UserRole + 2] = "exec";
+        roles[Qt::UserRole + 3] = "desktopFile";
+        sourceModel.setItemRoleNames(roles);
+
+        QStandardItem *item1 = new QStandardItem();
+        item1->setData("firefox — Mozilla Firefox", Qt::UserRole + 1);
+        item1->setData("address:0x55f123", Qt::UserRole + 2);
+        item1->setData("window:0x55f123", Qt::UserRole + 3);
+        sourceModel.appendRow(item1);
+
+        FuzzyMatcher matcher;
+        matcher.setWindowModel(&sourceModel);
+        matcher.setQuery("w:fire");
+
+        QCOMPARE(matcher.rowCount(), 1);
+        QModelIndex idx = matcher.index(0, 0);
+        QString matchedName = matcher.data(idx, Qt::UserRole + 1).toString();
+        QCOMPARE(matchedName, QString("firefox — Mozilla Firefox"));
+
+        // Test w. prefix
+        matcher.setQuery("w.fire");
+        QCOMPARE(matcher.rowCount(), 1);
+        QCOMPARE(matcher.data(matcher.index(0, 0), Qt::UserRole + 1).toString(), QString("firefox — Mozilla Firefox"));
     }
 
     void testNegativeMatches() {
@@ -110,6 +139,71 @@ private slots:
         // "xyz12399" should have DL distance > maxDist and produce no match
         matcher.setQuery("xyz12399");
         QCOMPARE(matcher.rowCount(), 0);
+    }
+
+    void testInlineCalculator() {
+        QStandardItemModel sourceModel;
+        QHash<int, QByteArray> roles;
+        roles[Qt::UserRole + 1] = "name";
+        roles[Qt::UserRole + 4] = "exec";
+        sourceModel.setItemRoleNames(roles);
+
+        FuzzyMatcher matcher;
+        matcher.setAppIndexerModel(&sourceModel);
+
+        // 125 * 8 = 1000
+        matcher.setQuery("125 * 8");
+        QCOMPARE(matcher.rowCount(), 1);
+        QCOMPARE(matcher.data(matcher.index(0, 0), Qt::UserRole + 1).toString(), QString("= 1000"));
+        QCOMPARE(matcher.data(matcher.index(0, 0), Qt::UserRole + 4).toString(), QString("__copy__:1000"));
+
+        // (50 + 25) / 3 = 25
+        matcher.setQuery("(50 + 25) / 3");
+        QCOMPARE(matcher.rowCount(), 1);
+        QCOMPARE(matcher.data(matcher.index(0, 0), Qt::UserRole + 1).toString(), QString("= 25"));
+
+        // 2^8 = 256
+        matcher.setQuery("2^8");
+        QCOMPARE(matcher.rowCount(), 1);
+        QCOMPARE(matcher.data(matcher.index(0, 0), Qt::UserRole + 1).toString(), QString("= 256"));
+    }
+
+    void testEmojiAndClipboardPrefixes() {
+        QStandardItemModel emojiModel;
+        QHash<int, QByteArray> emojiRoles;
+        emojiRoles[Qt::UserRole + 1] = "name";
+        emojiRoles[Qt::UserRole + 4] = "exec";
+        emojiModel.setItemRoleNames(emojiRoles);
+
+        QStandardItem *e1 = new QStandardItem();
+        e1->setData("Fire / Огонь", Qt::UserRole + 1);
+        e1->setData("__copy__:🔥", Qt::UserRole + 4);
+        emojiModel.appendRow(e1);
+
+        QStandardItemModel clipModel;
+        QHash<int, QByteArray> clipRoles;
+        clipRoles[Qt::UserRole + 1] = "name";
+        clipRoles[Qt::UserRole + 4] = "exec";
+        clipModel.setItemRoleNames(clipRoles);
+
+        QStandardItem *c1 = new QStandardItem();
+        c1->setData("echo 'hello world'", Qt::UserRole + 1);
+        c1->setData("__clipboard__:0", Qt::UserRole + 4);
+        clipModel.appendRow(c1);
+
+        FuzzyMatcher matcher;
+        matcher.setEmojiModel(&emojiModel);
+        matcher.setClipboardModel(&clipModel);
+
+        // Emoji query
+        matcher.setQuery("e.fire");
+        QCOMPARE(matcher.rowCount(), 1);
+        QCOMPARE(matcher.data(matcher.index(0, 0), Qt::UserRole + 1).toString(), QString("Fire / Огонь"));
+
+        // Clipboard query
+        matcher.setQuery("c.hello");
+        QCOMPARE(matcher.rowCount(), 1);
+        QCOMPARE(matcher.data(matcher.index(0, 0), Qt::UserRole + 1).toString(), QString("echo 'hello world'"));
     }
 };
 

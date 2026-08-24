@@ -23,11 +23,22 @@ Item {
         anchors.bottomMargin: 2
         radius: typeof ThemeManager !== "undefined" ? Math.min(ThemeManager.borderRadius, 6) : 6
 
-        color: (mouseArea.containsMouse || isCurrentItem) ? 
-            (typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa") : 
+        // Glass "pill" highlight: translucent accent fill + hairline border
+        // instead of a solid slab — reads as premium and keeps text legible.
+        color: (mouseArea.containsMouse || isCurrentItem) ?
+            Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa",
+                     isCurrentItem ? 0.22 : 0.12) :
             "transparent"
+        border.color: (mouseArea.containsMouse || isCurrentItem) ?
+            Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa",
+                     isCurrentItem ? 0.55 : 0.25) :
+            "transparent"
+        border.width: 1
 
         Behavior on color {
+            ColorAnimation { duration: 100 }
+        }
+        Behavior on border.color {
             ColorAnimation { duration: 100 }
         }
 
@@ -40,18 +51,46 @@ Item {
             anchors.rightMargin: 10
             spacing: 10
 
-            Image {
-                id: appIcon
+            Item {
                 width: (typeof ThemeManager !== "undefined" && ThemeManager.layoutMode === "compact") ? 20 : (typeof ThemeManager !== "undefined" ? ThemeManager.iconSize : 24)
                 height: width
                 anchors.verticalCenter: parent.verticalCenter
                 visible: typeof ThemeManager !== "undefined" ? ThemeManager.showIcons : true
-                source: (typeof modelData !== "undefined" && modelData && modelData.class) ? 
-                    ("image://icon/" + modelData.class.toLowerCase()) : 
-                    (model.iconName ? "image://icon/" + model.iconName : "")
-                sourceSize: Qt.size(width, height)
-                fillMode: Image.PreserveAspectFit
-                asynchronous: true
+
+                Image {
+                    id: appIcon
+                    anchors.fill: parent
+                    source: (typeof modelData !== "undefined" && modelData && modelData.class) ? 
+                        ("image://icon/" + modelData.class.toLowerCase()) : 
+                        (model.iconName ? "image://icon/" + model.iconName : "")
+                    sourceSize: Qt.size(parent.width, parent.height)
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: Math.max(parent.width * 0.2, 4)
+                    color: Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa", 0.2)
+                    border.color: Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa", 0.5)
+                    border.width: 1
+                    visible: appIcon.status === Image.Error || appIcon.status === Image.Null || (!appIcon.source.toString())
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: {
+                            if (model.desktopFile && model.desktopFile.startsWith("emoji:")) {
+                                return model.desktopFile.substring(6)
+                            }
+                            var t = (typeof modelData !== "undefined" && modelData && modelData.title) ? modelData.title : (model.name || "")
+                            return (t && t.length > 0) ? t.substring(0, 1).toUpperCase() : "◆"
+                        }
+                        color: typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa"
+                        font.pixelSize: (model.desktopFile && model.desktopFile.startsWith("emoji:")) ? Math.max(16, parent.width * 0.7) : Math.max(10, parent.width * 0.5)
+                        font.bold: true
+                        font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
+                    }
+                }
             }
 
             Text {
@@ -60,15 +99,13 @@ Item {
                     modelData.title : 
                     (model.highlightedName || model.name || "")
                 textFormat: Text.StyledText
-                color: (mouseArea.containsMouse || isCurrentItem) ? 
-                    ((typeof ThemeManager !== "undefined" && (ThemeManager.accentColor === "#dcd8a2" || ThemeManager.accentColor === "#b58900" || ThemeManager.accentColor === "#e6db74")) ? "#101424" : "#ffffff") : 
-                    (typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4")
+                color: typeof ThemeManager !== "undefined" ? ThemeManager.textColor : "#cdd6f4"
                 font.pixelSize: typeof ThemeManager !== "undefined" ? ThemeManager.fontSize : 14
                 font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
                 font.bold: isCurrentItem
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - (appIcon.visible ? appIcon.width + parent.spacing : 0) - (actionBadge.visible ? actionBadge.width + parent.spacing + 20 : 0) - (commentText.visible ? commentText.width + parent.spacing : 0)
                 elide: Text.ElideRight
+                width: Math.min(implicitWidth, parent.width * 0.42)
             }
 
             Text {
@@ -76,14 +113,14 @@ Item {
                 text: (typeof modelData !== "undefined" && modelData && modelData.class) ? 
                     (modelData.class + (modelData.workspace ? " | Workspace " + modelData.workspace : "")) : 
                     (model.genericName || model.comment || "")
-                color: (mouseArea.containsMouse || isCurrentItem) ? 
-                    ((typeof ThemeManager !== "undefined" && (ThemeManager.accentColor === "#dcd8a2" || ThemeManager.accentColor === "#b58900" || ThemeManager.accentColor === "#e6db74")) ? Qt.alpha("#101424", 0.8) : Qt.alpha("#ffffff", 0.75)) : 
-                    Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.secondaryTextColor : "#a6adc8", 0.7)
+                color: Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.secondaryTextColor : "#a6adc8",
+                               (mouseArea.containsMouse || isCurrentItem) ? 0.9 : 0.7)
                 font.pixelSize: (typeof ThemeManager !== "undefined" ? ThemeManager.fontSize : 14) - 2
                 font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
                 anchors.verticalCenter: parent.verticalCenter
-                visible: text.length > 0 && parent.width > 350
+                visible: text.length > 0 && parent.width > 250
                 elide: Text.ElideRight
+                width: Math.max(0, parent.width - (appIcon.visible ? appIcon.width + parent.spacing : 0) - appName.width - (actionBadge.visible ? actionBadge.width + parent.spacing + 20 : 0) - parent.spacing * 2)
             }
         }
 
@@ -98,6 +135,11 @@ Item {
             radius: 4
             color: "#ffffff25"
             visible: isCurrentItem
+            opacity: isCurrentItem ? 1 : 0
+
+            Behavior on opacity {
+                NumberAnimation { duration: 150 }
+            }
 
             Text {
                 id: actionText

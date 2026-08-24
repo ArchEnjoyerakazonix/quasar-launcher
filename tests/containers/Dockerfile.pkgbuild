@@ -1,0 +1,36 @@
+FROM archlinux:latest
+
+RUN sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 5/' /etc/pacman.conf && \
+    echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' > /etc/pacman.d/mirrorlist && \
+    pacman -Syu --noconfirm && pacman -S --noconfirm --needed \
+    base-devel \
+    git \
+    sudo \
+    cmake \
+    ninja \
+    qt6-base \
+    qt6-declarative \
+    qt6-svg \
+    qt6-tools \
+    layer-shell-qt \
+    hicolor-icon-theme \
+    && rm -rf /var/cache/pacman/pkg/*
+
+# Create non-root builder user
+RUN useradd -m builder && \
+    echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+USER builder
+WORKDIR /home/builder/src
+COPY --chown=builder:builder . /home/builder/src
+
+# Test makepkg build
+RUN cd /home/builder/src/packaging && \
+    tar --transform "s,^\.,quasar-1.0.0," -czf quasar-1.0.0.tar.gz -C /home/builder/src --exclude=./packaging --exclude=./build . && \
+    mkdir -p /home/builder/build-pkg && \
+    cp PKGBUILD quasar-1.0.0.tar.gz /home/builder/build-pkg/ && \
+    cd /home/builder/build-pkg && \
+    makepkg -f --nodeps && \
+    ls -lh quasar-launcher-*.pkg.tar.zst
+
+ENTRYPOINT ["echo", "Arch PKGBUILD successfully built package!"]

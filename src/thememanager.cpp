@@ -1,10 +1,16 @@
 #include "thememanager.h"
+#include "platform.h"
+#include "logging.h"
+
 #include <QStandardPaths>
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QFileInfo>
+#include <QColor>
+#include <QCoreApplication>
 
 ThemeManager* ThemeManager::instance()
 {
@@ -16,13 +22,83 @@ ThemeManager::ThemeManager(QObject *parent)
     : QObject(parent)
 {
     connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, &ThemeManager::onFileChanged);
+
+    m_saveDebounce.setSingleShot(true);
+    m_saveDebounce.setInterval(300);
+    connect(&m_saveDebounce, &QTimer::timeout, this, &ThemeManager::saveTheme);
+
+    loadBuiltinPresets();
+    loadUserThemes();
+    loadFavorites();
     load();
+}
+
+ThemeManager::~ThemeManager()
+{
+    // Flush a pending debounced write so a quick close never loses a tweak.
+    if (m_saveDebounce.isActive()) {
+        m_saveDebounce.stop();
+        saveTheme();
+    }
 }
 
 QString ThemeManager::themeFilePath() const
 {
-    QString configDir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/quasar";
-    return configDir + "/theme.json";
+    return Platform::configDir() + "/theme.json";
+}
+
+QString ThemeManager::favoritesFilePath() const
+{
+    return Platform::configDir() + "/favorites.json";
+}
+
+void ThemeManager::loadFavorites()
+{
+    QFile file(favoritesFilePath());
+    if (!file.open(QIODevice::ReadOnly)) {
+        return;
+    }
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    if (doc.isArray()) {
+        m_favorites.clear();
+        for (const QJsonValue &v : doc.array()) {
+            const QString name = v.toString();
+            if (!name.isEmpty() && !m_favorites.contains(name)) {
+                m_favorites.append(name);
+            }
+        }
+    }
+}
+
+void ThemeManager::saveFavorites()
+{
+    QFileInfo fi(favoritesFilePath());
+    QDir().mkpath(fi.absolutePath());
+    QFile file(favoritesFilePath());
+    if (!file.open(QIODevice::WriteOnly)) {
+        qCWarning(lcLauncher) << "cannot write favorites file";
+        return;
+    }
+    file.write(QJsonDocument(QJsonArray::fromStringList(m_favorites)).toJson());
+}
+
+bool ThemeManager::isFavorite(const QString &presetName) const
+{
+    return m_favorites.contains(presetName);
+}
+
+void ThemeManager::toggleFavorite(const QString &presetName)
+{
+    if (presetName.isEmpty()) {
+        return;
+    }
+    if (m_favorites.contains(presetName)) {
+        m_favorites.removeAll(presetName);
+    } else {
+        m_favorites.append(presetName);
+    }
+    saveFavorites();
+    emit favoritesChanged();
 }
 
 void ThemeManager::load()
@@ -37,7 +113,6 @@ void ThemeManager::load()
         file.close();
     }
 
-    // Ensure watcher monitors the file
     if (!m_watcher.files().contains(path) && QFile::exists(path)) {
         m_watcher.addPath(path);
     }
@@ -46,6 +121,7 @@ void ThemeManager::load()
 void ThemeManager::onFileChanged(const QString &path)
 {
     if (path == themeFilePath()) {
+        qCDebug(lcLauncher) << "theme.json changed on disk — live-reloading";
         load();
         emit themeChanged();
     }
@@ -68,10 +144,11 @@ void ThemeManager::applyJsonObject(const QJsonObject &obj)
     if (obj.contains("borderColor")) m_borderColor = obj["borderColor"].toString();
     if (obj.contains("showIcons")) m_showIcons = obj["showIcons"].toBool();
     if (obj.contains("iconSize")) m_iconSize = obj["iconSize"].toInt();
-    if (obj.contains("promptText")) m_promptText = obj["promptText"].toString();
+    m_promptText = QString();
     if (obj.contains("windowWidth")) m_windowWidth = obj["windowWidth"].toInt();
     if (obj.contains("windowHeight")) m_windowHeight = obj["windowHeight"].toInt();
     if (obj.contains("enableDimOverlay")) m_enableDimOverlay = obj["enableDimOverlay"].toBool();
+    if (obj.contains("presetName")) m_currentPresetName = obj["presetName"].toString();
 
     emit themeChanged();
 }
@@ -98,7 +175,13 @@ QJsonObject ThemeManager::toJsonObject() const
     obj["windowWidth"] = m_windowWidth;
     obj["windowHeight"] = m_windowHeight;
     obj["enableDimOverlay"] = m_enableDimOverlay;
+    obj["presetName"] = m_currentPresetName;
     return obj;
+}
+
+void ThemeManager::scheduleSave()
+{
+    m_saveDebounce.start();
 }
 
 void ThemeManager::saveTheme()
@@ -120,72 +203,156 @@ void ThemeManager::saveTheme()
     emit themeChanged();
 }
 
+// ---------------------------------------------------------------------------
+// Preset registry: built-in (bundled JSON) + user themes (~/.config/quasar/themes/)
+// ---------------------------------------------------------------------------
+
+void ThemeManager::loadBuiltinPresets()
+{
+    // Try the compiled Qt resource first (qrc://), then the installed and
+    // build-tree locations (tests run from the build dir).
+    QJsonDocument doc;
+    const QStringList candidates = {
+        QStringLiteral(":com/quasar/launcher/assets/presets.json"),
+        QStringLiteral(":com/quasar/themeselector/assets/presets.json"),
+        qEnvironmentVariable("QUASAR_PRESETS"),
+        QStringLiteral("assets/presets.json"),
+        QCoreApplication::applicationDirPath() + QStringLiteral("/../assets/presets.json"),
+        QCoreApplication::applicationDirPath() + QStringLiteral("/../share/quasar/presets.json"),
+        QStringLiteral("/usr/local/share/quasar/presets.json"),
+        QStringLiteral("/usr/share/quasar/presets.json"),
+    };
+    for (const QString &candidate : candidates) {
+        if (candidate.isEmpty()) continue;
+        QFile f(candidate);
+        if (f.open(QIODevice::ReadOnly)) {
+            doc = QJsonDocument::fromJson(f.readAll());
+            if (doc.isObject()) break;
+        }
+    }
+
+    if (!doc.isObject()) {
+        qCWarning(lcLauncher) << "failed to load built-in presets";
+        return;
+    }
+
+    const QJsonObject presets = doc.object();
+    for (auto it = presets.constBegin(); it != presets.constEnd(); ++it) {
+        if (it.value().isObject()) {
+            addPreset(it.key(), it.value().toObject());
+        }
+    }
+    qCDebug(lcLauncher) << "loaded" << m_presets.size() << "built-in presets";
+}
+
+void ThemeManager::loadUserThemes()
+{
+    const QString themesDir = Platform::configDir() + "/themes";
+    QDir dir(themesDir);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+        return;
+    }
+
+    int count = 0;
+    for (const QFileInfo &fi : dir.entryInfoList({"*.json"}, QDir::Files)) {
+        QFile f(fi.absoluteFilePath());
+        if (!f.open(QIODevice::ReadOnly)) continue;
+        QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+        if (!doc.isObject()) continue;
+
+        // A user theme JSON must contain at least "name" + theme properties.
+        QString name = doc.object()["name"].toString();
+        if (name.isEmpty()) {
+            name = fi.baseName();
+        }
+        addPreset(name, doc.object());
+        m_watcher.addPath(fi.absoluteFilePath());
+        ++count;
+    }
+
+    if (count > 0) {
+        qCDebug(lcLauncher) << "loaded" << count << "user themes from" << themesDir;
+    }
+}
+
+void ThemeManager::addPreset(const QString &name, const QJsonObject &obj)
+{
+    m_presets.insert(name, obj);
+}
+
+// ---------------------------------------------------------------------------
+// Public preset API (unchanged signatures)
+// ---------------------------------------------------------------------------
+
+void ThemeManager::loadPreset(const QString &presetName)
+{
+    auto it = m_presets.constFind(presetName);
+    if (it != m_presets.constEnd()) {
+        m_currentPresetName = presetName;
+        // The layout mode (list/grid/compact) is the user's own choice made
+        // with the mode pills — presets only restyle colors/fonts/geometry,
+        // so any theme can be used in any mode.
+        QJsonObject preset = it.value();
+        preset.remove(QStringLiteral("layoutMode"));
+        applyJsonObject(preset);
+        saveTheme();
+        qCDebug(lcLauncher) << "applied preset (colors only):" << presetName;
+    } else {
+        qCWarning(lcLauncher) << "preset not found:" << presetName;
+    }
+}
+
 QStringList ThemeManager::getAvailablePresets() const
 {
-    return {
-        "Catppuccin Macchiato",
-        "Catppuccin Mocha",
-        "Catppuccin Latte",
-        "Nord Dark",
-        "Tokyo Night",
-        "Tokyo Night Light",
-        "Cyberpunk 2077",
-        "Emerald Glass",
-        "Solarized Gold",
-        "Obsidian Velvet",
-        "Rofi Leylin",
-        "Rofi Arc-Dark",
-        "Rofi DarkBlue",
-        "Rofi Monokai",
-        "Rofi Material",
-        "Rofi Indego",
-        "Rofi Adapta-Nokto",
-        "Rofi Solarized",
-        "Dracula",
-        "Gruvbox Dark",
-        "Gruvbox Light",
-        "Rose Pine",
-        "Rose Pine Moon",
-        "Rose Pine Dawn",
-        "One Dark Pro",
-        "Monokai Pro",
-        "Everforest Dark",
-        "Kanagawa",
-        "Synthwave '84",
-        "Vesper",
-        "OLED Black",
-        "Modern Glass",
-        "Rofi Classic"
-    };
+    return m_presets.keys();
 }
 
 QString ThemeManager::getPresetCategory(const QString &presetName) const
 {
-    if (presetName == "Catppuccin Latte" || presetName == "Tokyo Night Light" || 
-        presetName == "Gruvbox Light" || presetName == "Rose Pine Dawn") {
-        return "Light";
+    auto it = m_presets.constFind(presetName);
+    if (it == m_presets.constEnd()) return {};
+
+    const QJsonObject obj = it.value();
+
+    // Heuristic: dark = low-luminance background, light = high-luminance.
+    // A user theme may set "category" explicitly.
+    if (obj.contains("category"))
+        return obj["category"].toString();
+
+    const QColor bg(obj["backgroundColor"].toString());
+    if (bg.isValid() && bg.lightness() > 190)
+        return QStringLiteral("Light");
+
+    // Neon: saturated accent or futuristic / cyber styling
+    if (presetName.contains("Cyber") || presetName.contains("Neon") || presetName.contains("Synthwave") 
+        || presetName.contains("Outrun") || presetName.contains("Glass") || presetName.contains("Matrix")
+        || presetName.contains("Hyper") || presetName.contains("Blade Runner")
+        || presetName.contains("Void") || presetName.contains("Imperial") || presetName.contains("Shadow")
+        || presetName.contains("Genesis") || presetName.contains("OLED")
+        || presetName.contains("Emerald") || presetName.contains("Sapphire") || presetName.contains("Ruby")
+        || presetName.contains("Amethyst") || presetName.contains("Crimson")) {
+        return QStringLiteral("Neon");
     }
-    if (presetName == "Synthwave '84" || presetName == "Cyberpunk 2077" || presetName == "Emerald Glass" || presetName == "Modern Glass") {
-        return "Neon";
-    }
-    if (presetName.startsWith("Rofi")) {
-        return "Retro";
-    }
-    return "Dark";
+    if (presetName.startsWith("Rofi")) return QStringLiteral("Retro");
+
+    return QStringLiteral("Dark");
 }
 
 QVariantMap ThemeManager::getPresetDetails(const QString &presetName) const
 {
-    ThemeManager tmp;
-    tmp.loadPreset(presetName);
+    auto it = m_presets.constFind(presetName);
+    if (it == m_presets.constEnd()) return {};
+
+    const QJsonObject obj = it.value();
     QVariantMap map;
-    map["backgroundColor"] = tmp.backgroundColor();
-    map["accentColor"] = tmp.accentColor();
-    map["cardColor"] = tmp.cardColor();
-    map["textColor"] = tmp.textColor();
-    map["secondaryTextColor"] = tmp.secondaryTextColor();
-    map["promptText"] = tmp.promptText();
-    map["layoutMode"] = tmp.layoutMode();
+    map["backgroundColor"] = obj["backgroundColor"].toString();
+    map["accentColor"] = obj["accentColor"].toString();
+    map["cardColor"] = obj["cardColor"].toString();
+    map["textColor"] = obj["textColor"].toString();
+    map["secondaryTextColor"] = obj["secondaryTextColor"].toString();
+    map["promptText"] = obj["promptText"].toString();
+    map["layoutMode"] = obj["layoutMode"].toString();
     return map;
 }
 
@@ -225,656 +392,66 @@ bool ThemeManager::importTheme(const QString &filePath)
     return true;
 }
 
-void ThemeManager::loadPreset(const QString &presetName)
+bool ThemeManager::syncPywal()
 {
-    if (presetName == "Rofi Classic") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#1c1c1c";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#262626";
-        m_cardOpacity = 1.0;
-        m_accentColor = "#007acc";
-        m_textColor = "#ffffff";
-        m_secondaryTextColor = "#888888";
-        m_fontFamily = "Monospace";
-        m_fontSize = 14;
-        m_borderRadius = 4;
-        m_borderWidth = 1;
-        m_borderColor = "#007acc";
-        m_showIcons = true;
-        m_iconSize = 24;
-        m_promptText = "run: ";
-        m_windowWidth = 600;
-        m_windowHeight = 400;
-    } else if (presetName == "Catppuccin Macchiato") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#24273a";
-        m_bgOpacity = 0.90;
-        m_cardColor = "#1e2030";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#8aadf4";
-        m_textColor = "#cad3f5";
-        m_secondaryTextColor = "#a5adce";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 12;
-        m_borderWidth = 1;
-        m_borderColor = "#363a4f";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "dmenu: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Catppuccin Mocha") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#1e1e2e";
-        m_bgOpacity = 0.92;
-        m_cardColor = "#181825";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#cba6f7";
-        m_textColor = "#cdd6f4";
-        m_secondaryTextColor = "#a6adc8";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 14;
-        m_borderWidth = 1;
-        m_borderColor = "#313244";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "launch: ";
-        m_windowWidth = 650;
-        m_windowHeight = 420;
-    } else if (presetName == "Catppuccin Latte") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#eff1f5";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#e6e9ef";
-        m_cardOpacity = 0.98;
-        m_accentColor = "#1e66f5";
-        m_textColor = "#4c4f69";
-        m_secondaryTextColor = "#6c6f85";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 12;
-        m_borderWidth = 1;
-        m_borderColor = "#ccd0da";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "search: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Nord Dark") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#2e3440";
-        m_bgOpacity = 0.90;
-        m_cardColor = "#3b4252";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#88c0d0";
-        m_textColor = "#eceff4";
-        m_secondaryTextColor = "#d8dee9";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 8;
-        m_borderWidth = 1;
-        m_borderColor = "#4c566a";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "find: ";
-        m_windowWidth = 620;
-        m_windowHeight = 400;
-    } else if (presetName == "Tokyo Night") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#1a1b26";
-        m_bgOpacity = 0.92;
-        m_cardColor = "#24283b";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#7aa2f7";
-        m_textColor = "#c0caf5";
-        m_secondaryTextColor = "#a9b1d6";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 10;
-        m_borderWidth = 1;
-        m_borderColor = "#414868";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "> ";
-        m_windowWidth = 650;
-        m_windowHeight = 430;
-    } else if (presetName == "Tokyo Night Light") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#d5d6db";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#cbccd1";
-        m_cardOpacity = 0.98;
-        m_accentColor = "#34548a";
-        m_textColor = "#343b58";
-        m_secondaryTextColor = "#565f89";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 10;
-        m_borderWidth = 1;
-        m_borderColor = "#9699a3";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "> ";
-        m_windowWidth = 650;
-        m_windowHeight = 430;
-    } else if (presetName == "Cyberpunk 2077") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#0d0f18";
-        m_bgOpacity = 0.92;
-        m_cardColor = "#1a1d2e";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#ff0055";
-        m_textColor = "#00ffe5";
-        m_secondaryTextColor = "#8a99ad";
-        m_fontFamily = "Monospace";
-        m_fontSize = 14;
-        m_borderRadius = 12;
-        m_borderWidth = 2;
-        m_borderColor = "#ff0055";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "cyber:// ";
-        m_windowWidth = 670;
-        m_windowHeight = 440;
-    } else if (presetName == "Emerald Glass") {
-        m_layoutMode = "grid";
-        m_backgroundColor = "#061a14";
-        m_bgOpacity = 0.85;
-        m_cardColor = "#0e2a22";
-        m_cardOpacity = 0.90;
-        m_accentColor = "#10b981";
-        m_textColor = "#e6f4f1";
-        m_secondaryTextColor = "#6ee7b7";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 14;
-        m_borderWidth = 2;
-        m_borderColor = "#059669";
-        m_showIcons = true;
-        m_iconSize = 44;
-        m_promptText = "emerald: ";
-        m_windowWidth = 700;
-        m_windowHeight = 480;
-    } else if (presetName == "Solarized Gold") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#002b36";
-        m_bgOpacity = 0.94;
-        m_cardColor = "#073642";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#b58900";
-        m_textColor = "#839496";
-        m_secondaryTextColor = "#586e75";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 8;
-        m_borderWidth = 1;
-        m_borderColor = "#cb4b16";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "solar: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Obsidian Velvet") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#121216";
-        m_bgOpacity = 0.92;
-        m_cardColor = "#1b1b22";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#a855f7";
-        m_textColor = "#f3e8ff";
-        m_secondaryTextColor = "#9333ea";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 12;
-        m_borderWidth = 2;
-        m_borderColor = "#c084fc";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "obsidian: ";
-        m_windowWidth = 660;
-        m_windowHeight = 430;
-    } else if (presetName == "Rofi Leylin") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#0f121d";
-        m_bgOpacity = 0.94;
-        m_cardColor = "#181b28";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#dcd8a2";
-        m_textColor = "#e3e4d5";
-        m_secondaryTextColor = "#7a8194";
-        m_fontFamily = "Monospace";
-        m_fontSize = 14;
-        m_borderRadius = 4;
-        m_borderWidth = 1;
-        m_borderColor = "#586075";
-        m_showIcons = false;
-        m_iconSize = 24;
-        m_promptText = "window: ";
-        m_windowWidth = 660;
-        m_windowHeight = 420;
-    } else if (presetName == "Rofi Arc-Dark") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#2d303b";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#383c4a";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#5294e2";
-        m_textColor = "#f3f4f5";
-        m_secondaryTextColor = "#8c919b";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 4;
-        m_borderWidth = 1;
-        m_borderColor = "#5294e2";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "rofi: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Rofi DarkBlue") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#1d1f21";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#2d303b";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#4491ed";
-        m_textColor = "#c5c8c6";
-        m_secondaryTextColor = "#707880";
-        m_fontFamily = "Monospace";
-        m_fontSize = 14;
-        m_borderRadius = 6;
-        m_borderWidth = 1;
-        m_borderColor = "#4491ed";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "blue: ";
-        m_windowWidth = 650;
-        m_windowHeight = 420;
-    } else if (presetName == "Rofi Monokai") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#272822";
-        m_bgOpacity = 0.93;
-        m_cardColor = "#3e3d32";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#a6e22e";
-        m_textColor = "#f8f8f2";
-        m_secondaryTextColor = "#75715e";
-        m_fontFamily = "Monospace";
-        m_fontSize = 14;
-        m_borderRadius = 6;
-        m_borderWidth = 1;
-        m_borderColor = "#e6db74";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "monokai: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Rofi Material") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#263238";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#37474f";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#00bcd4";
-        m_textColor = "#eceff1";
-        m_secondaryTextColor = "#90a4ae";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 8;
-        m_borderWidth = 1;
-        m_borderColor = "#00bcd4";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "material: ";
-        m_windowWidth = 650;
-        m_windowHeight = 420;
-    } else if (presetName == "Rofi Indego") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#1a1c23";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#252834";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#6c71c4";
-        m_textColor = "#e0e6ed";
-        m_secondaryTextColor = "#5b6275";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 10;
-        m_borderWidth = 1;
-        m_borderColor = "#6c71c4";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "indego: ";
-        m_windowWidth = 650;
-        m_windowHeight = 430;
-    } else if (presetName == "Rofi Adapta-Nokto") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#222d32";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#263238";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#00bcd4";
-        m_textColor = "#cfd8dc";
-        m_secondaryTextColor = "#78909c";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 6;
-        m_borderWidth = 1;
-        m_borderColor = "#00bcd4";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "adapta: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Rofi Solarized") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#002b36";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#073642";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#268bd2";
-        m_textColor = "#839496";
-        m_secondaryTextColor = "#586e75";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 6;
-        m_borderWidth = 1;
-        m_borderColor = "#268bd2";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "rofi-solar: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Dracula") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#282a36";
-        m_bgOpacity = 0.93;
-        m_cardColor = "#44475a";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#bd93f9";
-        m_textColor = "#f8f8f2";
-        m_secondaryTextColor = "#6272a4";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 8;
-        m_borderWidth = 1;
-        m_borderColor = "#ff79c6";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "dracula: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Gruvbox Dark") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#282828";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#3c3836";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#fe8019";
-        m_textColor = "#ebdbb2";
-        m_secondaryTextColor = "#a89984";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 6;
-        m_borderWidth = 1;
-        m_borderColor = "#504945";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "gruv: ";
-        m_windowWidth = 630;
-        m_windowHeight = 410;
-    } else if (presetName == "Gruvbox Light") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#fbf1c7";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#ebdbb2";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#af3a03";
-        m_textColor = "#3c3836";
-        m_secondaryTextColor = "#7c6f64";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 6;
-        m_borderWidth = 1;
-        m_borderColor = "#d5c4a1";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "gruv: ";
-        m_windowWidth = 630;
-        m_windowHeight = 410;
-    } else if (presetName == "Rose Pine") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#191724";
-        m_bgOpacity = 0.92;
-        m_cardColor = "#1f1d2e";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#ebbcba";
-        m_textColor = "#e0def4";
-        m_secondaryTextColor = "#908caa";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 10;
-        m_borderWidth = 1;
-        m_borderColor = "#26233a";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "rose: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Rose Pine Moon") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#232136";
-        m_bgOpacity = 0.92;
-        m_cardColor = "#2a273f";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#ea9a97";
-        m_textColor = "#e0def4";
-        m_secondaryTextColor = "#908caa";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 10;
-        m_borderWidth = 1;
-        m_borderColor = "#393552";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "moon: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Rose Pine Dawn") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#faf4ed";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#f2e9e1";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#d7827e";
-        m_textColor = "#575279";
-        m_secondaryTextColor = "#797593";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 10;
-        m_borderWidth = 1;
-        m_borderColor = "#cecacd";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "dawn: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "One Dark Pro") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#21252b";
-        m_bgOpacity = 0.93;
-        m_cardColor = "#282c34";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#61afef";
-        m_textColor = "#abb2bf";
-        m_secondaryTextColor = "#5c6370";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 8;
-        m_borderWidth = 1;
-        m_borderColor = "#353b45";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "code: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Monokai Pro") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#2d2a2e";
-        m_bgOpacity = 0.94;
-        m_cardColor = "#3a373b";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#ffd866";
-        m_textColor = "#fcfcfa";
-        m_secondaryTextColor = "#939293";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 8;
-        m_borderWidth = 1;
-        m_borderColor = "#ff6188";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "monokai: ";
-        m_windowWidth = 650;
-        m_windowHeight = 430;
-    } else if (presetName == "Everforest Dark") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#2d353b";
-        m_bgOpacity = 0.92;
-        m_cardColor = "#343f44";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#a7c080";
-        m_textColor = "#d3c6aa";
-        m_secondaryTextColor = "#859289";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 8;
-        m_borderWidth = 1;
-        m_borderColor = "#475258";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "forest: ";
-        m_windowWidth = 640;
-        m_windowHeight = 420;
-    } else if (presetName == "Kanagawa") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#1f1f28";
-        m_bgOpacity = 0.92;
-        m_cardColor = "#2a2a37";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#7e9cd8";
-        m_textColor = "#dcd7ba";
-        m_secondaryTextColor = "#717c7c";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 10;
-        m_borderWidth = 1;
-        m_borderColor = "#363646";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "wave: ";
-        m_windowWidth = 650;
-        m_windowHeight = 430;
-    } else if (presetName == "Synthwave '84") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#261535";
-        m_bgOpacity = 0.92;
-        m_cardColor = "#341948";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#ff7edb";
-        m_textColor = "#fced7e";
-        m_secondaryTextColor = "#36f9f6";
-        m_fontFamily = "Monospace";
-        m_fontSize = 14;
-        m_borderRadius = 10;
-        m_borderWidth = 2;
-        m_borderColor = "#fe4450";
-        m_showIcons = true;
-        m_iconSize = 28;
-        m_promptText = "80s: ";
-        m_windowWidth = 660;
-        m_windowHeight = 440;
-    } else if (presetName == "Vesper") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#101010";
-        m_bgOpacity = 0.95;
-        m_cardColor = "#1c1c1c";
-        m_cardOpacity = 0.95;
-        m_accentColor = "#ffc799";
-        m_textColor = "#ffffff";
-        m_secondaryTextColor = "#a0a0a0";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 8;
-        m_borderWidth = 1;
-        m_borderColor = "#282828";
-        m_showIcons = true;
-        m_iconSize = 26;
-        m_promptText = "vesper: ";
-        m_windowWidth = 630;
-        m_windowHeight = 410;
-    } else if (presetName == "OLED Black") {
-        m_layoutMode = "list";
-        m_backgroundColor = "#000000";
-        m_bgOpacity = 1.0;
-        m_cardColor = "#111111";
-        m_cardOpacity = 1.0;
-        m_accentColor = "#00ffcc";
-        m_textColor = "#ffffff";
-        m_secondaryTextColor = "#777777";
-        m_fontFamily = "Sans";
-        m_fontSize = 14;
-        m_borderRadius = 0;
-        m_borderWidth = 2;
-        m_borderColor = "#00ffcc";
-        m_showIcons = true;
-        m_iconSize = 24;
-        m_promptText = "apps: ";
-        m_windowWidth = 600;
-        m_windowHeight = 450;
-    } else if (presetName == "Modern Glass") {
-        m_layoutMode = "grid";
-        m_backgroundColor = "#0a0a14";
-        m_bgOpacity = 0.70;
-        m_cardColor = "#ffffff";
-        m_cardOpacity = 0.10;
-        m_accentColor = "#7c3aed";
-        m_textColor = "#ffffff";
-        m_secondaryTextColor = "#ffffffaa";
-        m_fontFamily = "Sans";
-        m_fontSize = 15;
-        m_borderRadius = 16;
-        m_borderWidth = 1;
-        m_borderColor = "#ffffff20";
-        m_showIcons = true;
-        m_iconSize = 48;
-        m_promptText = "";
-        m_windowWidth = 720;
-        m_windowHeight = 500;
+    const QString walColorsPath = QDir::homePath() + QStringLiteral("/.cache/wal/colors.json");
+    QFile file(walColorsPath);
+    if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
+        qCDebug(lcLauncher) << "Pywal colors.json not found at" << walColorsPath;
+        return false;
     }
 
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    file.close();
+    if (!doc.isObject()) return false;
+
+    QJsonObject root = doc.object();
+    QJsonObject special = root.value(QLatin1String("special")).toObject();
+    QJsonObject colors = root.value(QLatin1String("colors")).toObject();
+
+    QString bg = special.value(QLatin1String("background")).toString("#11111b");
+    QString fg = special.value(QLatin1String("foreground")).toString("#cdd6f4");
+    QString accent = colors.value(QLatin1String("color4")).toString("#89b4fa");
+    QString card = colors.value(QLatin1String("color0")).toString("#1e1e2e");
+    QString border = colors.value(QLatin1String("color8")).toString("#313244");
+    QString secondary = colors.value(QLatin1String("color7")).toString("#a6adc8");
+
+    QJsonObject pywalPreset;
+    pywalPreset[QLatin1String("name")] = QStringLiteral("Pywal (Auto)");
+    pywalPreset[QLatin1String("category")] = QStringLiteral("Dynamic");
+    pywalPreset[QLatin1String("backgroundColor")] = bg;
+    pywalPreset[QLatin1String("bgOpacity")] = 0.85;
+    pywalPreset[QLatin1String("cardColor")] = card;
+    pywalPreset[QLatin1String("cardOpacity")] = 0.90;
+    pywalPreset[QLatin1String("accentColor")] = accent;
+    pywalPreset[QLatin1String("textColor")] = fg;
+    pywalPreset[QLatin1String("secondaryTextColor")] = secondary;
+    pywalPreset[QLatin1String("borderColor")] = border;
+    pywalPreset[QLatin1String("borderRadius")] = 12;
+    pywalPreset[QLatin1String("borderWidth")] = 1;
+
+    addPreset(QStringLiteral("Pywal (Auto)"), pywalPreset);
+    applyJsonObject(pywalPreset);
     saveTheme();
+    return true;
 }
 
-void ThemeManager::setLayoutMode(const QString &v) { if (m_layoutMode != v) { m_layoutMode = v; saveTheme(); } }
-void ThemeManager::setBackgroundColor(const QString &v) { if (m_backgroundColor != v) { m_backgroundColor = v; saveTheme(); } }
-void ThemeManager::setBgOpacity(double v) { if (m_bgOpacity != v) { m_bgOpacity = v; saveTheme(); } }
-void ThemeManager::setCardColor(const QString &v) { if (m_cardColor != v) { m_cardColor = v; saveTheme(); } }
-void ThemeManager::setCardOpacity(double v) { if (m_cardOpacity != v) { m_cardOpacity = v; saveTheme(); } }
-void ThemeManager::setAccentColor(const QString &v) { if (m_accentColor != v) { m_accentColor = v; saveTheme(); } }
-void ThemeManager::setTextColor(const QString &v) { if (m_textColor != v) { m_textColor = v; saveTheme(); } }
-void ThemeManager::setSecondaryTextColor(const QString &v) { if (m_secondaryTextColor != v) { m_secondaryTextColor = v; saveTheme(); } }
-void ThemeManager::setFontFamily(const QString &v) { if (m_fontFamily != v) { m_fontFamily = v; saveTheme(); } }
-void ThemeManager::setFontSize(int v) { if (m_fontSize != v) { m_fontSize = v; saveTheme(); } }
-void ThemeManager::setBorderRadius(int v) { if (m_borderRadius != v) { m_borderRadius = v; saveTheme(); } }
-void ThemeManager::setBorderWidth(int v) { if (m_borderWidth != v) { m_borderWidth = v; saveTheme(); } }
-void ThemeManager::setBorderColor(const QString &v) { if (m_borderColor != v) { m_borderColor = v; saveTheme(); } }
-void ThemeManager::setShowIcons(bool v) { if (m_showIcons != v) { m_showIcons = v; saveTheme(); } }
-void ThemeManager::setIconSize(int v) { if (m_iconSize != v) { m_iconSize = v; saveTheme(); } }
-void ThemeManager::setPromptText(const QString &v) { if (m_promptText != v) { m_promptText = v; saveTheme(); } }
-void ThemeManager::setWindowWidth(int v) { if (m_windowWidth != v) { m_windowWidth = v; saveTheme(); } }
-void ThemeManager::setWindowHeight(int v) { if (m_windowHeight != v) { m_windowHeight = v; saveTheme(); } }
-void ThemeManager::setEnableDimOverlay(bool v) { if (m_enableDimOverlay != v) { m_enableDimOverlay = v; saveTheme(); } }
+void ThemeManager::setLayoutMode(const QString &v) { if (m_layoutMode != v) { m_layoutMode = v; scheduleSave(); } }
+void ThemeManager::setBackgroundColor(const QString &v) { if (m_backgroundColor != v) { m_backgroundColor = v; scheduleSave(); } }
+void ThemeManager::setBgOpacity(double v) { if (m_bgOpacity != v) { m_bgOpacity = v; scheduleSave(); } }
+void ThemeManager::setCardColor(const QString &v) { if (m_cardColor != v) { m_cardColor = v; scheduleSave(); } }
+void ThemeManager::setCardOpacity(double v) { if (m_cardOpacity != v) { m_cardOpacity = v; scheduleSave(); } }
+void ThemeManager::setAccentColor(const QString &v) { if (m_accentColor != v) { m_accentColor = v; scheduleSave(); } }
+void ThemeManager::setTextColor(const QString &v) { if (m_textColor != v) { m_textColor = v; scheduleSave(); } }
+void ThemeManager::setSecondaryTextColor(const QString &v) { if (m_secondaryTextColor != v) { m_secondaryTextColor = v; scheduleSave(); } }
+void ThemeManager::setFontFamily(const QString &v) { if (m_fontFamily != v) { m_fontFamily = v; scheduleSave(); } }
+void ThemeManager::setFontSize(int v) { if (m_fontSize != v) { m_fontSize = v; scheduleSave(); } }
+void ThemeManager::setBorderRadius(int v) { if (m_borderRadius != v) { m_borderRadius = v; scheduleSave(); } }
+void ThemeManager::setBorderWidth(int v) { if (m_borderWidth != v) { m_borderWidth = v; scheduleSave(); } }
+void ThemeManager::setBorderColor(const QString &v) { if (m_borderColor != v) { m_borderColor = v; scheduleSave(); } }
+void ThemeManager::setShowIcons(bool v) { if (m_showIcons != v) { m_showIcons = v; scheduleSave(); } }
+void ThemeManager::setIconSize(int v) { if (m_iconSize != v) { m_iconSize = v; scheduleSave(); } }
+void ThemeManager::setPromptText(const QString &v) { if (m_promptText != v) { m_promptText = v; scheduleSave(); } }
+void ThemeManager::setWindowWidth(int v) { if (m_windowWidth != v) { m_windowWidth = v; scheduleSave(); } }
+void ThemeManager::setWindowHeight(int v) { if (m_windowHeight != v) { m_windowHeight = v; scheduleSave(); } }
+void ThemeManager::setEnableDimOverlay(bool v) { if (m_enableDimOverlay != v) { m_enableDimOverlay = v; scheduleSave(); } }

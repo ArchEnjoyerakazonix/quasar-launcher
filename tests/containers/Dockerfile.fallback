@@ -1,0 +1,48 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV QT_QPA_PLATFORM=offscreen
+
+# Note: liblayershellqtinterface-dev is deliberately NOT installed here
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    ninja-build \
+    qt6-base-dev \
+    qt6-declarative-dev \
+    qt6-svg-dev \
+    qml6-module-qtqml \
+    qml6-module-qtqml-workerscript \
+    qml6-module-qtqml-models \
+    qml6-module-qtquick \
+    qml6-module-qtquick-controls \
+    qml6-module-qtquick-layouts \
+    qml6-module-qtquick-templates \
+    qml6-module-qtquick-window \
+    qml6-module-qtquick-shapes \
+    libgl1-mesa-dri \
+    libglx-mesa0 \
+    libegl1 \
+    libxkbcommon-x11-0 \
+    xvfb \
+    x11-utils \
+    dbus-x11 \
+    dbus-daemon \
+    bc \
+    hicolor-icon-theme \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY . /src
+
+# Explicitly disable LayerShellQt to verify fallback frameless mode
+RUN mkdir -p /src/build && \
+    cmake -B /src/build -S /src -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_DISABLE_FIND_PACKAGE_LayerShellQt=ON && \
+    cmake --build /src/build && \
+    ctest --test-dir /src/build --output-on-failure && \
+    cmake --install /src/build
+
+RUN chmod +x /src/tests/containers/entrypoint_test.sh
+
+ENTRYPOINT ["/src/tests/containers/entrypoint_test.sh"]

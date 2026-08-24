@@ -1,6 +1,10 @@
 #include "fuzzymatcher.h"
 #include "frecencyranker.h"
 #include "windowswitcher.h"
+#include "actionmodel.h"
+#include "emojimanager.h"
+#include "clipboardmanager.h"
+#include "calculator.h"
 #include <vector>
 #include <array>
 #include <functional>
@@ -12,6 +16,14 @@ FuzzyMatcher::FuzzyMatcher(QObject *parent)
 {
     setDynamicSortFilter(true);
     sort(0, Qt::AscendingOrder);
+
+    m_windowRefreshDebounceTimer.setSingleShot(true);
+    m_windowRefreshDebounceTimer.setInterval(150);
+    connect(&m_windowRefreshDebounceTimer, &QTimer::timeout, this, [this]() {
+        if (auto *winModel = qobject_cast<WindowListModel*>(m_windowModel)) {
+            winModel->refresh();
+        }
+    });
 }
 
 QString FuzzyMatcher::query() const {
@@ -24,11 +36,40 @@ void FuzzyMatcher::setWindowModel(QAbstractItemModel *windowModel) {
 
 void FuzzyMatcher::setActionModel(QAbstractItemModel *actionModel) {
     m_actionModel = actionModel;
+    // A round-trip menu replaces the list: drop the stale remainder filter
+    // so the follow-up menu is shown in full.
+    if (auto *actions = qobject_cast<ActionModel*>(actionModel)) {
+        connect(actions, &ActionModel::pipeMenuUpdated, this, [this]() {
+            if (!m_pipeMode) return;
+            m_pipeRemainder.clear();
+            invalidateFilter();
+        });
+    }
+}
+
+void FuzzyMatcher::setEmojiModel(QAbstractItemModel *emojiModel) {
+    m_emojiModel = emojiModel;
+}
+
+void FuzzyMatcher::setClipboardModel(QAbstractItemModel *clipboardModel) {
+    m_clipboardModel = clipboardModel;
 }
 
 void FuzzyMatcher::setAppIndexerModel(QAbstractItemModel *appModel) {
     m_appIndexerModel = appModel;
     setSourceModel(appModel);
+}
+
+// Returns the pipe action name the query refers to, if any: the query must
+// equal the action name ("/windows") or extend it ("/windows fire").
+static QString matchingPipeAction(ActionModel *actions, const QString &trimmed) {
+    if (!actions || !trimmed.startsWith(QLatin1Char('/')))
+        return {};
+    for (const QString &name : actions->pipeActionNames()) {
+        if (trimmed == name || trimmed.startsWith(name + QLatin1Char(' ')))
+            return name;
+    }
+    return {};
 }
 
 void FuzzyMatcher::setQuery(const QString &newQuery) {
@@ -38,31 +79,90 @@ void FuzzyMatcher::setQuery(const QString &newQuery) {
     m_scoreCache.clear();
 
     QString trimmed = m_query.trimmed();
-    bool isWindowQuery = trimmed.startsWith("w:") || trimmed.startsWith("window:");
+    bool isWindowQuery = trimmed.startsWith("w:", Qt::CaseInsensitive) || 
+                         trimmed.startsWith("w.", Qt::CaseInsensitive) ||
+                         trimmed.startsWith("window:", Qt::CaseInsensitive) ||
+                         trimmed.startsWith("w ", Qt::CaseInsensitive);
+    bool isEmojiQuery = trimmed.startsWith("e:", Qt::CaseInsensitive) ||
+                        trimmed.startsWith("e.", Qt::CaseInsensitive) ||
+                        trimmed.startsWith("emoji:", Qt::CaseInsensitive) ||
+                        trimmed.startsWith("e ", Qt::CaseInsensitive) ||
+                        trimmed.startsWith(":");
+    bool isClipboardQuery = trimmed.startsWith("c:", Qt::CaseInsensitive) ||
+                            trimmed.startsWith("c.", Qt::CaseInsensitive) ||
+                            trimmed.startsWith("clip:", Qt::CaseInsensitive) ||
+                            trimmed.startsWith("cb:", Qt::CaseInsensitive) ||
+                            trimmed.startsWith("c ", Qt::CaseInsensitive);
     bool isActionQuery = trimmed.startsWith("/");
 
-    beginResetModel();
-    if (isWindowQuery && m_windowModel) {
-        if (auto *winModel = qobject_cast<WindowListModel*>(m_windowModel)) {
-            winModel->refresh();
+    auto *actions = qobject_cast<ActionModel*>(m_actionModel);
+    const QString pipeName = isActionQuery ? matchingPipeAction(actions, trimmed)
+                                           : QString();
+
+    if (!pipeName.isEmpty() && actions) {
+        // dmenu-style pipe mode: run the script, list its stdout lines.
+        // "input": "query" actions get the remainder as $1 and skip filtering.
+        if (pipeName != m_pipeActionName || !m_pipeMode) {
+            actions->triggerPipeAction(pipeName, trimmed.mid(pipeName.length()).trimmed());
         }
-        if (sourceModel() != m_windowModel) {
-            setSourceModel(m_windowModel);
+        m_pipeMode = true;
+        m_pipeActionName = pipeName;
+        m_pipeRemainder = trimmed.mid(pipeName.length()).trimmed();
+        m_pipeFilterEnabled = actions->pipeFiltersByRemainder();
+        if (sourceModel() != actions->pipeResultModel()) {
+            setSourceModel(actions->pipeResultModel());
         }
-    } else if (isActionQuery && m_actionModel) {
-        if (sourceModel() != m_actionModel) {
-            setSourceModel(m_actionModel);
+    } else {
+        m_pipeMode = false;
+        m_pipeActionName.clear();
+        m_pipeRemainder.clear();
+
+        if (isWindowQuery && m_windowModel) {
+            if (sourceModel() != m_windowModel) {
+                setSourceModel(m_windowModel);
+                if (auto *winModel = qobject_cast<WindowListModel*>(m_windowModel)) {
+                    winModel->refresh();
+                }
+            } else {
+                m_windowRefreshDebounceTimer.start();
+            }
+        } else if (isEmojiQuery && m_emojiModel) {
+            if (sourceModel() != m_emojiModel) {
+                setSourceModel(m_emojiModel);
+            }
+        } else if (isClipboardQuery && m_clipboardModel) {
+            if (sourceModel() != m_clipboardModel) {
+                setSourceModel(m_clipboardModel);
+                if (auto *clipModel = qobject_cast<ClipboardManager*>(m_clipboardModel)) {
+                    clipModel->refresh();
+                }
+            }
+        } else if (isActionQuery && m_actionModel) {
+            if (sourceModel() != m_actionModel) {
+                setSourceModel(m_actionModel);
+            }
+        } else if (!isWindowQuery && !isEmojiQuery && !isClipboardQuery && !isActionQuery && m_appIndexerModel) {
+            if (sourceModel() != m_appIndexerModel) {
+                setSourceModel(m_appIndexerModel);
+            }
         }
-    } else if (!isWindowQuery && !isActionQuery && m_appIndexerModel) {
-        if (sourceModel() != m_appIndexerModel) {
-            setSourceModel(m_appIndexerModel);
+    }
+
+    // Check for inline math calculation in default app search mode
+    if (!isWindowQuery && !isEmojiQuery && !isClipboardQuery && !isActionQuery && !m_pipeMode) {
+        auto res = m_calculator.evaluate(trimmed);
+        if (res.has_value()) {
+            m_mathResult = QStringLiteral("= ") + *res;
+        } else {
+            m_mathResult = std::nullopt;
         }
+    } else {
+        m_mathResult = std::nullopt;
     }
 
     m_scoreCache.clear();
     invalidateFilter();
     sort(0, Qt::AscendingOrder);
-    endResetModel();
 
     emit queryChanged();
 }
@@ -72,30 +172,49 @@ void FuzzyMatcher::setSourceModel(QAbstractItemModel *sourceModel) {
         m_appIndexerModel = sourceModel;
     }
     m_scoreCache.clear();
+
+    // Drop connections to the previous source model before switching,
+    // otherwise every app/window/pipe flip piles up stale signal hooks.
+    for (const QMetaObject::Connection &c : m_sourceConnections)
+        disconnect(c);
+    m_sourceConnections.clear();
+
     QSortFilterProxyModel::setSourceModel(sourceModel);
     updateRoleKeys();
     if (sourceModel) {
-        connect(sourceModel, &QAbstractItemModel::modelReset, this, [this]() {
+        auto track = [this](QMetaObject::Connection c) {
+            m_sourceConnections.append(c);
+        };
+        track(connect(sourceModel, &QAbstractItemModel::modelReset, this, [this]() {
             m_scoreCache.clear();
             updateRoleKeys();
             invalidateFilter();
-        });
-        connect(sourceModel, &QAbstractItemModel::rowsInserted, this, [this]() {
+        }));
+        track(connect(sourceModel, &QAbstractItemModel::rowsInserted, this, [this]() {
             m_scoreCache.clear();
             invalidateFilter();
-        });
-        connect(sourceModel, &QAbstractItemModel::rowsRemoved, this, [this]() {
+        }));
+        track(connect(sourceModel, &QAbstractItemModel::rowsRemoved, this, [this]() {
             m_scoreCache.clear();
             invalidateFilter();
-        });
-        connect(sourceModel, &QAbstractItemModel::dataChanged, this, [this]() {
+        }));
+        track(connect(sourceModel, &QAbstractItemModel::dataChanged, this, [this]() {
             m_scoreCache.clear();
             invalidateFilter();
-        });
+        }));
     }
 }
 
 void FuzzyMatcher::updateRoleKeys() {
+    m_nameRole = Qt::UserRole + 1;
+    m_genericNameRole = Qt::UserRole + 2;
+    m_commentRole = Qt::UserRole + 3;
+    m_execRole = Qt::UserRole + 4;
+    m_iconNameRole = Qt::UserRole + 5;
+    m_categoriesRole = Qt::UserRole + 6;
+    m_keywordsRole = Qt::UserRole + 7;
+    m_desktopFileRole = Qt::UserRole + 8;
+
     if (!sourceModel()) return;
     m_corpusHasCyrillic = false;
     QHash<int, QByteArray> roles = sourceModel()->roleNames();
@@ -104,6 +223,7 @@ void FuzzyMatcher::updateRoleKeys() {
         else if (it.value() == "genericName") m_genericNameRole = it.key();
         else if (it.value() == "comment") m_commentRole = it.key();
         else if (it.value() == "exec") m_execRole = it.key();
+        else if (it.value() == "iconName") m_iconNameRole = it.key();
         else if (it.value() == "categories") m_categoriesRole = it.key();
         else if (it.value() == "keywords") m_keywordsRole = it.key();
         else if (it.value() == "desktopFile") m_desktopFileRole = it.key();
@@ -305,24 +425,28 @@ static int matchSingleQuery(const QString &name, const QString &genericName, con
         return 35000 - (editDist * 5000) - (std::abs(nLen - qLen) * 200);
     }
 
-    // 8. Strict Subsequence Match with Gap Penalties
-    int qIdx = 0;
-    int firstMatch = -1;
-    int lastMatch = -1;
-    for (int i = 0; i < nLen && qIdx < qLen; ++i) {
-        if (nLower[i] == qLower[qIdx]) {
-            if (firstMatch == -1) firstMatch = i;
-            lastMatch = i;
-            qIdx++;
+    // 8. Strict Subsequence Match with Compactness & Gap Checks
+    if (qLen >= 2) {
+        int qIdx = 0;
+        int firstMatch = -1;
+        int lastMatch = -1;
+        for (int i = 0; i < nLen && qIdx < qLen; ++i) {
+            if (nLower[i] == qLower[qIdx]) {
+                if (firstMatch == -1) firstMatch = i;
+                lastMatch = i;
+                qIdx++;
+            }
         }
-    }
 
-    if (qIdx == qLen && firstMatch != -1) {
-        int span = lastMatch - firstMatch + 1;
-        int extraGap = span - qLen;
-        int lenDiff = std::abs(nLen - qLen);
-        int subseqScore = 20000 - (extraGap * 1200) - (lenDiff * 300) - (firstMatch * 200);
-        if (subseqScore > 0) return subseqScore;
+        if (qIdx == qLen && firstMatch != -1) {
+            int span = lastMatch - firstMatch + 1;
+            int extraGap = span - qLen;
+            int lenDiff = std::abs(nLen - qLen);
+            if (extraGap <= std::max(2, qLen) && span <= (qLen * 2 + 1)) {
+                int subseqScore = 25000 - (extraGap * 2500) - (lenDiff * 250) - (firstMatch * 300);
+                if (subseqScore > 5000) return subseqScore;
+            }
+        }
     }
 
     // 9. GenericName or Comment Prefix/Substring (1,000+)
@@ -332,11 +456,36 @@ static int matchSingleQuery(const QString &name, const QString &genericName, con
     return 0;
 }
 
+static QString cleanQueryString(const QString &query) {
+    QString clean = query.trimmed();
+    if (clean.startsWith(QLatin1String("w:"), Qt::CaseInsensitive)) clean = clean.mid(2).trimmed();
+    else if (clean.startsWith(QLatin1String("w."), Qt::CaseInsensitive)) clean = clean.mid(2).trimmed();
+    else if (clean.startsWith(QLatin1String("window:"), Qt::CaseInsensitive)) clean = clean.mid(7).trimmed();
+    else if (clean.startsWith(QLatin1String("w "), Qt::CaseInsensitive)) clean = clean.mid(2).trimmed();
+    else if (clean.startsWith(QLatin1String("e:"), Qt::CaseInsensitive)) clean = clean.mid(2).trimmed();
+    else if (clean.startsWith(QLatin1String("e."), Qt::CaseInsensitive)) clean = clean.mid(2).trimmed();
+    else if (clean.startsWith(QLatin1String("emoji:"), Qt::CaseInsensitive)) clean = clean.mid(6).trimmed();
+    else if (clean.startsWith(QLatin1String("e "), Qt::CaseInsensitive)) clean = clean.mid(2).trimmed();
+    else if (clean.startsWith(QLatin1String("c:"), Qt::CaseInsensitive)) clean = clean.mid(2).trimmed();
+    else if (clean.startsWith(QLatin1String("c."), Qt::CaseInsensitive)) clean = clean.mid(2).trimmed();
+    else if (clean.startsWith(QLatin1String("clip:"), Qt::CaseInsensitive)) clean = clean.mid(5).trimmed();
+    else if (clean.startsWith(QLatin1String("cb:"), Qt::CaseInsensitive)) clean = clean.mid(3).trimmed();
+    else if (clean.startsWith(QLatin1String("c "), Qt::CaseInsensitive)) clean = clean.mid(2).trimmed();
+    else if (clean.startsWith(QLatin1String("b:"), Qt::CaseInsensitive)) clean = clean.mid(2).trimmed();
+    else if (clean.startsWith(QLatin1String("browser:"), Qt::CaseInsensitive)) clean = clean.mid(8).trimmed();
+    else if (clean.startsWith(QLatin1String("google:"), Qt::CaseInsensitive)) clean = clean.mid(7).trimmed();
+    else if (clean.startsWith(QLatin1String("chrome:"), Qt::CaseInsensitive)) clean = clean.mid(7).trimmed();
+    else if (clean.startsWith(QLatin1String("g:"), Qt::CaseInsensitive)) clean = clean.mid(2).trimmed();
+    else if (clean.startsWith(QLatin1String("web:"), Qt::CaseInsensitive)) clean = clean.mid(4).trimmed();
+    else if (clean.startsWith(QLatin1Char('?'))) clean = clean.mid(1).trimmed();
+    else if (clean.startsWith(QLatin1Char('/'))) clean = clean.mid(1).trimmed();
+    else if (clean.startsWith(QLatin1Char(':'))) clean = clean.mid(1).trimmed();
+    else if (clean.startsWith(QLatin1Char('='))) clean = clean.mid(1).trimmed();
+    return clean;
+}
+
 int FuzzyMatcher::score(int sourceRow) const {
-    QString cleanQuery = m_query.trimmed();
-    if (cleanQuery.startsWith("w:")) cleanQuery = cleanQuery.mid(2).trimmed();
-    else if (cleanQuery.startsWith("window:")) cleanQuery = cleanQuery.mid(7).trimmed();
-    else if (cleanQuery.startsWith("/")) cleanQuery = cleanQuery.mid(1).trimmed();
+    QString cleanQuery = cleanQueryString(m_query);
     
     if (cleanQuery.isEmpty()) return 1000;
     
@@ -358,26 +507,27 @@ int FuzzyMatcher::score(int sourceRow) const {
         return 0;
     }
 
-    int scoreOrig = matchSingleQuery(name, genericName, comment, exec, keywords, m_query);
+    int scoreOrig = matchSingleQuery(name, genericName, comment, exec, keywords, cleanQuery);
     
-    QString qwertTrans = convertRuToEn(m_query);
-    int scoreQwerty = (qwertTrans != m_query) ? matchSingleQuery(name, genericName, comment, exec, keywords, qwertTrans) : 0;
+    QString qwertTrans = convertRuToEn(cleanQuery);
+    int scoreQwerty = (qwertTrans != cleanQuery) ? matchSingleQuery(name, genericName, comment, exec, keywords, qwertTrans) : 0;
 
     int scoreEnToRu = 0;
-    if (m_corpusHasCyrillic && isPureLatin(m_query)) {
-        QString enToRuTrans = convertEnToRu(m_query);
-        if (enToRuTrans != m_query) {
+    if (m_corpusHasCyrillic && isPureLatin(cleanQuery)) {
+        QString enToRuTrans = convertEnToRu(cleanQuery);
+        if (enToRuTrans != cleanQuery) {
             scoreEnToRu = matchSingleQuery(name, genericName, comment, exec, keywords, enToRuTrans);
         }
     }
 
-    QString mnemonTrans = convertRuToEnMnemonic(m_query);
-    int scoreMnemonic = (mnemonTrans != m_query && mnemonTrans != qwertTrans) ? matchSingleQuery(name, genericName, comment, exec, keywords, mnemonTrans) : 0;
+    QString mnemonTrans = convertRuToEnMnemonic(cleanQuery);
+    int scoreMnemonic = (mnemonTrans != cleanQuery && mnemonTrans != qwertTrans) ? matchSingleQuery(name, genericName, comment, exec, keywords, mnemonTrans) : 0;
 
     int finalScore = std::max({scoreOrig, scoreQwerty, scoreEnToRu, scoreMnemonic});
 
     // Add Logarithmically Clamped Frecency Ranker bonus (max 900 points, never crosses 10,000 relevance tier boundary)
-    if (finalScore > 0 && !desktopFile.isEmpty()) {
+    // Exclude ephemeral window addresses (e.g. window:0x...) to prevent frecency pollution
+    if (finalScore > 0 && !desktopFile.isEmpty() && !desktopFile.startsWith(QLatin1String("window:"))) {
         double rawFrecency = FrecencyRanker::instance()->getScore(desktopFile);
         int historyBonus = std::clamp(qRound(180.0 * std::log1p(rawFrecency)), 0, 900);
         finalScore += historyBonus;
@@ -388,29 +538,30 @@ int FuzzyMatcher::score(int sourceRow) const {
 }
 
 QString FuzzyMatcher::formatHighlightedName(const QString &name, const QString &query) const {
-    if (query.isEmpty()) return name.toHtmlEscaped();
+    QString clean = cleanQueryString(query);
+    if (clean.isEmpty()) return name.toHtmlEscaped();
 
-    QString activeQuery = query;
+    QString activeQuery = clean;
     int bestScore = matchSingleQuery(name, QString(), QString(), QString(), QStringList(), activeQuery);
     
-    QString qwertTrans = convertRuToEn(query);
-    int sQ = (qwertTrans != query) ? matchSingleQuery(name, QString(), QString(), QString(), QStringList(), qwertTrans) : 0;
+    QString qwertTrans = convertRuToEn(clean);
+    int sQ = (qwertTrans != clean) ? matchSingleQuery(name, QString(), QString(), QString(), QStringList(), qwertTrans) : 0;
     if (sQ > bestScore) {
         bestScore = sQ;
         activeQuery = qwertTrans;
     }
 
-    if (m_corpusHasCyrillic && isPureLatin(query)) {
-        QString enToRuTrans = convertEnToRu(query);
-        int sE = (enToRuTrans != query) ? matchSingleQuery(name, QString(), QString(), QString(), QStringList(), enToRuTrans) : 0;
+    if (m_corpusHasCyrillic && isPureLatin(clean)) {
+        QString enToRuTrans = convertEnToRu(clean);
+        int sE = (enToRuTrans != clean) ? matchSingleQuery(name, QString(), QString(), QString(), QStringList(), enToRuTrans) : 0;
         if (sE > bestScore) {
             bestScore = sE;
             activeQuery = enToRuTrans;
         }
     }
 
-    QString mnemonTrans = convertRuToEnMnemonic(query);
-    int sM = (mnemonTrans != query) ? matchSingleQuery(name, QString(), QString(), QString(), QStringList(), mnemonTrans) : 0;
+    QString mnemonTrans = convertRuToEnMnemonic(clean);
+    int sM = (mnemonTrans != clean && mnemonTrans != qwertTrans) ? matchSingleQuery(name, QString(), QString(), QString(), QStringList(), mnemonTrans) : 0;
     if (sM > bestScore) {
         bestScore = sM;
         activeQuery = mnemonTrans;
@@ -441,20 +592,96 @@ QString FuzzyMatcher::formatHighlightedName(const QString &name, const QString &
     return result;
 }
 
+int FuzzyMatcher::rowCount(const QModelIndex &parent) const {
+    int base = QSortFilterProxyModel::rowCount(parent);
+    if (!parent.isValid() && m_mathResult.has_value()) {
+        return base + 1;
+    }
+    return base;
+}
+
+QModelIndex FuzzyMatcher::index(int row, int column, const QModelIndex &parent) const {
+    if (row < 0 || column < 0 || parent.isValid())
+        return QModelIndex();
+    if (m_mathResult.has_value() && row == 0) {
+        return createIndex(row, column);
+    }
+    int sourceRow = m_mathResult.has_value() ? row - 1 : row;
+    return QSortFilterProxyModel::index(sourceRow, column, parent);
+}
+
+QModelIndex FuzzyMatcher::mapToSource(const QModelIndex &proxyIndex) const {
+    if (!proxyIndex.isValid()) return QModelIndex();
+    if (m_mathResult.has_value()) {
+        if (proxyIndex.row() == 0) return QModelIndex();
+        int proxyRow = proxyIndex.row() - 1;
+        if (proxyRow < 0) return QModelIndex();
+        QModelIndex proxySub = QSortFilterProxyModel::index(proxyRow, proxyIndex.column());
+        return QSortFilterProxyModel::mapToSource(proxySub);
+    }
+    return QSortFilterProxyModel::mapToSource(proxyIndex);
+}
+
 QVariant FuzzyMatcher::data(const QModelIndex &index, int role) const {
+    if (!index.isValid()) return QVariant();
+
+    if (m_mathResult.has_value() && index.row() == 0) {
+        switch (role) {
+        case Qt::DisplayRole:
+        case Qt::UserRole + 1: // NameRole
+            return m_mathResult.value();
+        case Qt::UserRole + 2: // GenericNameRole
+            return QStringLiteral("Math Result • Press Enter to copy to clipboard");
+        case Qt::UserRole + 3: // CommentRole
+            return QStringLiteral("Calculator");
+        case Qt::UserRole + 4: // ExecRole
+            return QStringLiteral("__copy__:") + m_mathResult.value().mid(2).trimmed();
+        case Qt::UserRole + 5: // IconNameRole
+            return QStringLiteral("accessories-calculator");
+        case Qt::UserRole + 6: // CategoriesRole
+            return QStringList{QStringLiteral("Calculator")};
+        case Qt::UserRole + 7: // KeywordsRole
+            return QStringList{QStringLiteral("calc"), QStringLiteral("math")};
+        case Qt::UserRole + 8: // DesktopFileRole
+            return QStringLiteral("math:result");
+        case ScoreRole:
+            return 999999;
+        case HighlightedNameRole:
+            return m_mathResult.value();
+        default:
+            return QVariant();
+        }
+    }
+
     if (role == ScoreRole) {
-        return score(index.row());
+        int actualRow = (m_mathResult.has_value() && index.row() > 0) ? index.row() - 1 : index.row();
+        return score(actualRow);
     }
     if (role == HighlightedNameRole) {
-        QModelIndex sourceIdx = mapToSource(index);
-        QString name = sourceModel()->data(sourceIdx, m_nameRole).toString();
+        QModelIndex src = mapToSource(index);
+        if (!src.isValid() || !sourceModel()) return QVariant();
+        QString name = sourceModel()->data(src, m_nameRole).toString();
         return formatHighlightedName(name, m_query);
     }
+
+    if (m_mathResult.has_value() && index.row() > 0) {
+        QModelIndex proxySub = QSortFilterProxyModel::index(index.row() - 1, index.column());
+        return QSortFilterProxyModel::data(proxySub, role);
+    }
+
     return QSortFilterProxyModel::data(index, role);
 }
 
 QHash<int, QByteArray> FuzzyMatcher::roleNames() const {
-    QHash<int, QByteArray> roles = QSortFilterProxyModel::roleNames();
+    QHash<int, QByteArray> roles;
+    roles[Qt::UserRole + 1] = "name";
+    roles[Qt::UserRole + 2] = "genericName";
+    roles[Qt::UserRole + 3] = "comment";
+    roles[Qt::UserRole + 4] = "exec";
+    roles[Qt::UserRole + 5] = "iconName";
+    roles[Qt::UserRole + 6] = "categories";
+    roles[Qt::UserRole + 7] = "keywords";
+    roles[Qt::UserRole + 8] = "desktopFile";
     roles[ScoreRole] = "score";
     roles[HighlightedNameRole] = "highlightedName";
     return roles;
@@ -462,11 +689,25 @@ QHash<int, QByteArray> FuzzyMatcher::roleNames() const {
 
 bool FuzzyMatcher::filterAcceptsRow(int source_row, const QModelIndex &source_parent) const {
     Q_UNUSED(source_parent);
+    if (m_pipeMode) {
+        // Pipe results filter on the remainder after the action name:
+        // "/windows fire" keeps only lines containing "fire". Actions that
+        // consume the query themselves ("input": "query") show everything.
+        if (m_pipeRemainder.isEmpty() || !m_pipeFilterEnabled) return true;
+        QString name = m_nameRole != -1
+            ? sourceModel()->data(sourceModel()->index(source_row, 0), m_nameRole).toString()
+            : QString();
+        return name.contains(m_pipeRemainder, Qt::CaseInsensitive);
+    }
     if (m_query.isEmpty()) return true;
     return score(source_row) > 0;
 }
 
 bool FuzzyMatcher::lessThan(const QModelIndex &source_left, const QModelIndex &source_right) const {
+    if (m_pipeMode) {
+        // Keep the script's stdout order while filtering.
+        return source_left.row() < source_right.row();
+    }
     if (m_query.isEmpty()) {
         QString nameLeft = m_nameRole != -1 ? sourceModel()->data(source_left, m_nameRole).toString() : QString();
         QString nameRight = m_nameRole != -1 ? sourceModel()->data(source_right, m_nameRole).toString() : QString();

@@ -7,6 +7,9 @@ Item {
     height: GridView.view ? GridView.view.cellHeight : 140
 
     signal clicked()
+    function activate() {
+        root.clicked()
+    }
 
     property bool isCurrentItem: GridView.isCurrentItem
 
@@ -37,16 +40,43 @@ Item {
             anchors.centerIn: parent
             spacing: 6
 
-            Image {
-                id: appIcon
+            Item {
                 width: typeof ThemeManager !== "undefined" ? ThemeManager.iconSize : 48
                 height: width
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: typeof ThemeManager !== "undefined" ? ThemeManager.showIcons : true
-                source: model.iconName ? "image://icon/" + model.iconName : ""
-                sourceSize: Qt.size(width, height)
-                fillMode: Image.PreserveAspectFit
-                asynchronous: true
+
+                Image {
+                    id: appIcon
+                    anchors.fill: parent
+                    source: model.iconName ? "image://icon/" + model.iconName : ""
+                    sourceSize: Qt.size(parent.width, parent.height)
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: Math.max(parent.width * 0.2, 4)
+                    color: Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa", 0.2)
+                    border.color: Qt.alpha(typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa", 0.5)
+                    border.width: 1
+                    visible: appIcon.status === Image.Error || appIcon.status === Image.Null || !model.iconName
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: {
+                            if (model.desktopFile && model.desktopFile.startsWith("emoji:")) {
+                                return model.desktopFile.substring(6)
+                            }
+                            return (model.name && model.name.length > 0) ? model.name.substring(0, 1).toUpperCase() : "◆"
+                        }
+                        color: typeof ThemeManager !== "undefined" ? ThemeManager.accentColor : "#89b4fa"
+                        font.pixelSize: (model.desktopFile && model.desktopFile.startsWith("emoji:")) ? Math.max(18, parent.width * 0.7) : Math.max(12, parent.width * 0.45)
+                        font.bold: true
+                        font.family: typeof ThemeManager !== "undefined" ? ThemeManager.fontFamily : "Sans"
+                    }
+                }
             }
 
             Text {

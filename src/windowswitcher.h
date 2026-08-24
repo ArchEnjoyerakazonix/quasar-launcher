@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QList>
 #include <QVariantList>
 #include <QVariantMap>
 #include <QAbstractListModel>
@@ -20,10 +21,13 @@ class WindowListModel : public QAbstractListModel {
 public:
     enum Roles {
         NameRole = Qt::UserRole + 1,
-        ExecRole = Qt::UserRole + 2,
-        DesktopFileRole = Qt::UserRole + 3,
-        GenericNameRole = Qt::UserRole + 4,
-        IconNameRole = Qt::UserRole + 5
+        GenericNameRole = Qt::UserRole + 2,
+        CommentRole = Qt::UserRole + 3,
+        ExecRole = Qt::UserRole + 4,
+        IconNameRole = Qt::UserRole + 5,
+        CategoriesRole = Qt::UserRole + 6,
+        KeywordsRole = Qt::UserRole + 7,
+        DesktopFileRole = Qt::UserRole + 8
     };
 
     explicit WindowListModel(QObject *parent = nullptr);
@@ -35,7 +39,14 @@ public:
     Q_INVOKABLE void refresh();
 
 private:
+    void applyWindows(QList<WindowItem> windows);
+
+    static QList<WindowItem> parseHyprlandClients(const QByteArray &output);
+    static QList<WindowItem> parseSwayTree(const QByteArray &output);
+    static QList<WindowItem> parseWmctrlList(const QByteArray &output);
+
     QList<WindowItem> m_windows;
+    bool m_refreshPending = false;
 };
 
 class WindowSwitcher : public QObject {

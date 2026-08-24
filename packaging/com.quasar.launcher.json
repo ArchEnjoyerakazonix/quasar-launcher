@@ -1,0 +1,50 @@
+{
+    "app-id": "com.quasar.launcher",
+    "runtime": "org.kde.Sdk",
+    "runtime-version": "6.11",
+    "sdk": "org.kde.Sdk",
+    "command": "quasar",
+    "finish-args": [
+        "--socket=wayland",
+        "--socket=fallback-x11",
+        "--share=ipc",
+        "--device=dri",
+        "--talk-name=org.freedesktop.DBus",
+        "--talk-name=org.freedesktop.portal.Desktop",
+        "--own-name=com.quasar.launcher",
+        "--filesystem=~/.config/quasar:create"
+    ],
+    "cleanup": [
+        "/include",
+        "/lib/pkgconfig",
+        "*.a",
+        "*.la"
+    ],
+    "modules": [
+        {
+            "name": "quasar",
+            "buildsystem": "cmake-ninja",
+            "builddir": true,
+            "config-opts": [
+                "-DCMAKE_INSTALL_PREFIX=/app",
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-DBUILD_TESTING=OFF",
+                "-DCMAKE_DISABLE_FIND_PACKAGE_LayerShellQt=ON"
+            ],
+            "sources": [
+                {
+                    "type": "dir",
+                    "path": ".."
+                }
+            ],
+            "post-install": [
+                "mv /app/share/applications/quasar.desktop /app/share/applications/com.quasar.launcher.desktop",
+                "mv /app/share/applications/quasar-theme-selector.desktop /app/share/applications/com.quasar.launcher.theme-selector.desktop",
+                "sed -i 's/^Icon=.*/Icon=com.quasar.launcher/' /app/share/applications/com.quasar.launcher.desktop",
+                "sed -i 's/^Icon=.*/Icon=com.quasar.launcher/' /app/share/applications/com.quasar.launcher.theme-selector.desktop",
+                "mv /app/share/icons/hicolor/scalable/apps/quasar.svg /app/share/icons/hicolor/scalable/apps/com.quasar.launcher.svg",
+                "rm -f /app/share/icons/hicolor/scalable/status/quasar-mono-white.svg /app/share/icons/hicolor/scalable/status/quasar-mono-black.svg"
+            ]
+        }
+    ]
+}

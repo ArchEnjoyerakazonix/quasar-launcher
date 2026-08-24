@@ -8,21 +8,36 @@ Window {
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
-    width: typeof ThemeManager !== "undefined" ? ThemeManager.windowWidth : 640
-    height: typeof ThemeManager !== "undefined" ? ThemeManager.windowHeight : 420
+    width: ThemeManager.windowWidth
+    height: ThemeManager.windowHeight
+
+    property bool previewMode: false
 
     onActiveChanged: {
-        if (!active && visible) {
+        if (!active && visible && !previewMode) {
             root.hide()
         }
     }
 
     function onOpened() {
+        previewMode = false
         searchBar.forceActiveFocus()
-        if (typeof fuzzyMatcher !== "undefined") {
-            fuzzyMatcher.query = ""
-            searchBar.text = ""
+        fuzzyMatcher.query = ""
+        searchBar.text = ""
+        if (typeof windowSwitcher !== "undefined") {
+            windowSwitcher.getOpenWindows()
         }
+    }
+
+    function hideAfterLaunch(appExec) {
+        // Launching the theme selector keeps the launcher visible as the
+        // live-preview canvas; focus loss to the selector overlay must not
+        // close it.
+        if (appExec === "__preview__") {
+            previewMode = true
+            return
+        }
+        root.hide()
     }
 
     // Press Escape to hide the window
@@ -35,14 +50,22 @@ Window {
     Rectangle {
         id: container
         anchors.fill: parent
-        radius: typeof ThemeManager !== "undefined" ? ThemeManager.borderRadius : 8
+        radius: ThemeManager.borderRadius
 
-        color: Qt.alpha(
-            typeof ThemeManager !== "undefined" ? ThemeManager.backgroundColor : "#1e1e2e",
-            typeof ThemeManager !== "undefined" ? ThemeManager.bgOpacity : 0.95
-        )
-        border.color: typeof ThemeManager !== "undefined" ? ThemeManager.borderColor : "#313244"
-        border.width: typeof ThemeManager !== "undefined" ? ThemeManager.borderWidth : 1
+        color: Qt.alpha(ThemeManager.backgroundColor, ThemeManager.bgOpacity)
+        border.color: ThemeManager.borderColor
+        border.width: ThemeManager.borderWidth
+
+        // Subtle appear animation: the panel slides/fades in on every open
+        opacity: root.visible ? 1 : 0
+        scale: root.visible ? 1 : 0.96
+
+        Behavior on opacity {
+            NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+        }
+        Behavior on scale {
+            NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+        }
 
         Column {
             anchors.fill: parent
@@ -54,14 +77,27 @@ Window {
                 width: parent.width
 
                 onTextChanged: {
-                    if (typeof fuzzyMatcher !== "undefined") {
-                        fuzzyMatcher.query = text
-                    }
+                    fuzzyMatcher.query = text
                 }
 
                 onDownPressed: {
-                    if (appList.visible) appList.forceActiveFocus()
-                    else if (appGrid.visible) appGrid.forceActiveFocus()
+                    if (appList.visible) appList.moveDown()
+                    else if (appGrid.visible) appGrid.moveDown()
+                }
+
+                onUpPressed: {
+                    if (appList.visible) appList.moveUp()
+                    else if (appGrid.visible) appGrid.moveUp()
+                }
+
+                onLeftPressed: {
+                    if (appList.visible) appList.moveLeft()
+                    else if (appGrid.visible) appGrid.moveLeft()
+                }
+
+                onRightPressed: {
+                    if (appList.visible) appList.moveRight()
+                    else if (appGrid.visible) appGrid.moveRight()
                 }
 
                 onReturnPressed: {
@@ -76,20 +112,16 @@ Window {
                 width: parent.width
                 height: parent.height - searchBar.height - parent.spacing
                 query: searchBar.text
-                visible: typeof ThemeManager === "undefined" || ThemeManager.layoutMode === "list" || ThemeManager.layoutMode === "compact"
+                visible: ThemeManager.layoutMode === "list" || ThemeManager.layoutMode === "compact"
 
                 onRequestSearchFocus: {
                     searchBar.forceActiveFocus()
                 }
 
                 onLaunchApp: function(appExec, appId) {
-                    if (typeof appIndexer !== "undefined") {
-                        appIndexer.launch(appExec)
-                    }
-                    if (typeof frecencyRanker !== "undefined") {
-                        frecencyRanker.recordLaunch(appId)
-                    }
-                    root.hide()
+                    hideAfterLaunch(appExec)
+                    appIndexer.launch(appExec)
+                    frecencyRanker.recordLaunch(appId)
                 }
             }
 
@@ -99,20 +131,16 @@ Window {
                 width: parent.width
                 height: parent.height - searchBar.height - parent.spacing
                 query: searchBar.text
-                visible: typeof ThemeManager !== "undefined" && ThemeManager.layoutMode === "grid"
+                visible: ThemeManager.layoutMode === "grid"
 
                 onRequestSearchFocus: {
                     searchBar.forceActiveFocus()
                 }
 
                 onLaunchApp: function(appExec, appId) {
-                    if (typeof appIndexer !== "undefined") {
-                        appIndexer.launch(appExec)
-                    }
-                    if (typeof frecencyRanker !== "undefined") {
-                        frecencyRanker.recordLaunch(appId)
-                    }
-                    root.hide()
+                    hideAfterLaunch(appExec)
+                    appIndexer.launch(appExec)
+                    frecencyRanker.recordLaunch(appId)
                 }
             }
         }

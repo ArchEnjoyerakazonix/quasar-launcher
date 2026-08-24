@@ -10,6 +10,13 @@ Item {
     signal requestSearchFocus()
 
     property string query: ""
+    property bool isSpecialMode: {
+        var q = root.query.trim().toLowerCase()
+        return q.startsWith("w:") || q.startsWith("w.") || q.startsWith("window:") || q.startsWith("w ") ||
+               q.startsWith("e:") || q.startsWith("e.") || q.startsWith("emoji:") || q.startsWith("e ") || q.startsWith(":") ||
+               q.startsWith("c:") || q.startsWith("c.") || q.startsWith("clip:") || q.startsWith("cb:") || q.startsWith("c ") ||
+               q.startsWith("/")
+    }
 
     property int extraSelectionIndex: -1 // -1: normal grid, 0: Run command, 1: Search web
 
@@ -21,11 +28,19 @@ Item {
 
         model: typeof fuzzyMatcher !== "undefined" ? fuzzyMatcher : null
         delegate: AppDelegate {
-            onClicked: {
-                root.launchApp(model.exec || "", model.desktopFile || model.id || "")
+            function runItem() {
+                var execCmd = model.exec || ""
+                if (execCmd.startsWith("__pipe__:")) {
+                    if (typeof ActionModel !== "undefined") {
+                        ActionModel.selectPipeItem(execCmd.substring(8))
+                    }
+                    return
+                }
+                root.launchApp(execCmd, model.desktopFile || model.id || "")
             }
+            onClicked: runItem()
             function activate() {
-                root.launchApp(model.exec || "", model.desktopFile || model.id || "")
+                runItem()
             }
         }
 
@@ -41,10 +56,23 @@ Item {
         // Ensure keyboard navigation works out of the box
         keyNavigationEnabled: true
 
+        // Pipe script consumed the selection and printed nothing — close.
+        Connections {
+            target: typeof ActionModel !== "undefined" ? ActionModel : null
+            function onPipeActionDone() {
+                root.launchApp("__action__", "")
+            }
+            function onPipeMenuUpdated() {
+                if (grid.count > 0) {
+                    grid.currentIndex = 0
+                }
+            }
+        }
+
         footer: Column {
             width: grid.width
             spacing: 4
-            visible: root.query.length > 0
+            visible: root.query.length > 0 && !root.isSpecialMode
 
             // Command runner
             Rectangle {
@@ -88,7 +116,7 @@ Item {
                     hoverEnabled: true
                     preventStealing: true
                     onClicked: {
-                        root.launchApp(root.query, "")
+                        root.launchApp("__shell__:" + root.query, "")
                     }
                 }
             }
@@ -135,7 +163,7 @@ Item {
                     hoverEnabled: true
                     preventStealing: true
                     onClicked: {
-                        root.launchApp("__web__", "")
+                        root.launchApp("__web__:" + root.query, "")
                     }
                 }
             }
@@ -164,46 +192,121 @@ Item {
         }
 
         Keys.onReturnPressed: {
-            if (root.extraSelectionIndex === 1) {
-                root.launchApp("__web__", "")
-            } else if (root.extraSelectionIndex === 0) {
-                root.launchApp(root.query, "")
-            } else if (grid.currentItem && typeof grid.currentItem.activate === "function") {
-                grid.currentItem.activate()
-            } else if (grid.currentItem) {
-                grid.currentItem.clicked()
-            } else if (root.query.length > 0) {
-                root.launchApp(root.query, "")
-            }
+            root.handleReturn()
+        }
+
+        Keys.onLeftPressed: {
+            root.moveLeft()
+        }
+
+        Keys.onRightPressed: {
+            root.moveRight()
         }
         
         Keys.onUpPressed: {
-            if (root.extraSelectionIndex > 0) {
-                root.extraSelectionIndex--
-            } else if (root.extraSelectionIndex === 0) {
-                root.extraSelectionIndex = -1
-                if (grid.count > 0) {
-                    grid.currentIndex = grid.count - 1
-                } else {
-                    root.requestSearchFocus()
-                }
-            } else if (grid.currentIndex >= Math.floor(grid.width / grid.cellWidth)) {
-                grid.moveCurrentIndexUp()
-            } else {
-                root.requestSearchFocus()
-            }
+            root.moveUp()
         }
 
         Keys.onDownPressed: {
-            var cols = Math.max(1, Math.floor(grid.width / grid.cellWidth))
-            if (grid.currentIndex + cols < grid.count) {
-                grid.moveCurrentIndexDown()
-            } else if (grid.currentIndex < grid.count - 1) {
+            root.moveDown()
+        }
+    }
+
+    function moveLeft() {
+        if (grid.count === 0) return
+        if (root.extraSelectionIndex !== -1) {
+            root.extraSelectionIndex = -1
+        }
+        if (grid.currentIndex > 0) {
+            grid.currentIndex--
+        } else {
+            grid.currentIndex = grid.count - 1
+        }
+        grid.positionViewAtIndex(grid.currentIndex, GridView.Contain)
+    }
+
+    function moveRight() {
+        if (grid.count === 0) return
+        if (root.extraSelectionIndex !== -1) {
+            root.extraSelectionIndex = -1
+        }
+        if (grid.currentIndex < grid.count - 1) {
+            grid.currentIndex++
+        } else {
+            grid.currentIndex = 0
+        }
+        grid.positionViewAtIndex(grid.currentIndex, GridView.Contain)
+    }
+
+    function moveUp() {
+        if (grid.count === 0) return
+        if (root.extraSelectionIndex > 0) {
+            root.extraSelectionIndex--
+            return
+        } else if (root.extraSelectionIndex === 0) {
+            root.extraSelectionIndex = -1
+            if (grid.count > 0) {
                 grid.currentIndex = grid.count - 1
-            } else if (root.query.length > 0) {
-                if (root.extraSelectionIndex < 1) {
-                    root.extraSelectionIndex++
+                grid.positionViewAtIndex(grid.currentIndex, GridView.Contain)
+            }
+            return
+        }
+
+        var cols = Math.max(1, Math.floor(grid.width / grid.cellWidth))
+        if (grid.currentIndex >= cols) {
+            grid.currentIndex -= cols
+            grid.positionViewAtIndex(grid.currentIndex, GridView.Contain)
+        } else {
+            root.requestSearchFocus()
+        }
+    }
+
+    function moveDown() {
+        if (grid.count === 0) {
+            if (root.query.length > 0 && root.extraSelectionIndex < 1) {
+                root.extraSelectionIndex++
+            }
+            return
+        }
+
+        var cols = Math.max(1, Math.floor(grid.width / grid.cellWidth))
+        if (grid.currentIndex + cols < grid.count) {
+            grid.currentIndex += cols
+            grid.positionViewAtIndex(grid.currentIndex, GridView.Contain)
+        } else if (grid.currentIndex < grid.count - 1) {
+            grid.currentIndex = grid.count - 1
+            grid.positionViewAtIndex(grid.currentIndex, GridView.Contain)
+        } else if (root.query.length > 0) {
+            if (root.extraSelectionIndex < 1) {
+                root.extraSelectionIndex++
+            }
+        }
+    }
+
+    function handleReturn() {
+        var q = root.query.trim()
+        var qLower = q.toLowerCase()
+        if (root.extraSelectionIndex === 1 || q.startsWith("?") || qLower.startsWith("g:") || qLower.startsWith("web:") || qLower.startsWith("b:") || qLower.startsWith("browser:") || qLower.startsWith("google:") || qLower.startsWith("chrome:") || qLower.startsWith("search:") || q.startsWith("http://") || q.startsWith("https://") || q.startsWith("www.")) {
+            root.launchApp("__web__:" + q, "")
+        } else if (root.extraSelectionIndex === 0 || q.startsWith("$") || q.startsWith(">")) {
+            root.launchApp("__shell__:" + q, "")
+        } else if (grid.count > 0 && grid.currentIndex >= 0) {
+            if (grid.currentItem && typeof grid.currentItem.activate === "function") {
+                grid.currentItem.activate()
+            } else if (grid.currentItem && typeof grid.currentItem.clicked === "function") {
+                grid.currentItem.clicked()
+            } else if (grid.model) {
+                var item = grid.model.get ? grid.model.get(grid.currentIndex) : (grid.model[grid.currentIndex] || null)
+                if (item) {
+                    var execCmd = item.exec || ""
+                    root.launchApp(execCmd, item.desktopFile || item.id || "")
                 }
+            }
+        } else if (q.length > 0) {
+            if (q.startsWith("/")) {
+                root.launchApp(q, "")
+            } else {
+                root.launchApp("__web__:" + q, "")
             }
         }
     }
@@ -216,3 +319,4 @@ Item {
         }
     }
 }
+

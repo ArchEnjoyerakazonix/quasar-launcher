@@ -5,6 +5,8 @@
 #include <QVariantMap>
 #include <QFileSystemWatcher>
 #include <QJsonObject>
+#include <QMap>
+#include <QTimer>
 
 class ThemeManager : public QObject {
     Q_OBJECT
@@ -27,11 +29,13 @@ class ThemeManager : public QObject {
     Q_PROPERTY(int windowWidth READ windowWidth WRITE setWindowWidth NOTIFY themeChanged)
     Q_PROPERTY(int windowHeight READ windowHeight WRITE setWindowHeight NOTIFY themeChanged)
     Q_PROPERTY(bool enableDimOverlay READ enableDimOverlay WRITE setEnableDimOverlay NOTIFY themeChanged)
+    Q_PROPERTY(QString currentPresetName READ currentPresetName NOTIFY themeChanged)
+    Q_PROPERTY(QStringList favoritePresets READ favoritePresets NOTIFY favoritesChanged)
 
 public:
     static ThemeManager* instance();
     explicit ThemeManager(QObject *parent = nullptr);
-    ~ThemeManager() override = default;
+    ~ThemeManager() override;
 
     QString layoutMode() const { return m_layoutMode; }
     QString backgroundColor() const { return m_backgroundColor; }
@@ -52,6 +56,8 @@ public:
     int windowWidth() const { return m_windowWidth; }
     int windowHeight() const { return m_windowHeight; }
     bool enableDimOverlay() const { return m_enableDimOverlay; }
+    // Name of the last applied preset ("" for a hand-tuned theme).
+    QString currentPresetName() const { return m_currentPresetName; }
 
     void setLayoutMode(const QString &v);
     void setBackgroundColor(const QString &v);
@@ -80,9 +86,17 @@ public:
     Q_INVOKABLE QVariantMap getPresetDetails(const QString &presetName) const;
     Q_INVOKABLE bool exportTheme(const QString &filePath);
     Q_INVOKABLE bool importTheme(const QString &filePath);
+    Q_INVOKABLE bool syncPywal();
+
+    // Favorites: starred presets pinned to the top of the selector list.
+    // Persisted in ~/.config/quasar/favorites.json.
+    Q_INVOKABLE bool isFavorite(const QString &presetName) const;
+    Q_INVOKABLE void toggleFavorite(const QString &presetName);
+    QStringList favoritePresets() const { return m_favorites; }
 
 signals:
     void themeChanged();
+    void favoritesChanged();
 
 private slots:
     void onFileChanged(const QString &path);
@@ -90,10 +104,25 @@ private slots:
 private:
     void load();
     QString themeFilePath() const;
+    QString favoritesFilePath() const;
+    void loadFavorites();
+    void saveFavorites();
     void applyJsonObject(const QJsonObject &obj);
     QJsonObject toJsonObject() const;
+    // Live-tuning writes are batched: many property changes during a single
+    // color-picking session produce one disk write after the debounce delay.
+    void scheduleSave();
 
-    QString m_layoutMode = "list"; // "list" (Rofi) or "grid" (Spotlight)
+    // Preset registry: name → theme JSON object.
+    // Populated from assets/presets.json at startup, then merged with
+    // ~/.config/quasar/themes/*.json (user themes override built-in).
+    void loadBuiltinPresets();
+    void loadUserThemes();
+    void addPreset(const QString &name, const QJsonObject &obj);
+
+    QMap<QString, QJsonObject> m_presets;
+
+    QString m_layoutMode = "list";
     QString m_backgroundColor = "#11111b";
     double m_bgOpacity = 0.85;
     QString m_cardColor = "#1e1e2e";
@@ -112,6 +141,9 @@ private:
     int m_windowWidth = 650;
     int m_windowHeight = 420;
     bool m_enableDimOverlay = false;
+    QString m_currentPresetName;
+    QStringList m_favorites;
 
     QFileSystemWatcher m_watcher;
+    QTimer m_saveDebounce;
 };
