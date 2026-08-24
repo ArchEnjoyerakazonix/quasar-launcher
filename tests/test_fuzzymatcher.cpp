@@ -205,6 +205,23 @@ private slots:
         QCOMPARE(matcher.rowCount(), 1);
         QCOMPARE(matcher.data(matcher.index(0, 0), Qt::UserRole + 1).toString(), QString("echo 'hello world'"));
     }
+
+    void testCalculatorSecurityRejections() {
+        Calculator calc;
+        // Non-whitelisted identifier access must be rejected
+        QVERIFY(!calc.evaluate("constructor.constructor('return 1')()").has_value());
+        QVERIFY(!calc.evaluate("eval('2+2')").has_value());
+        QVERIFY(!calc.evaluate("this.toString()").has_value());
+        QVERIFY(!calc.evaluate("Function('return 42')()").has_value());
+        QVERIFY(!calc.evaluate("globalThis.Math.abs(-5)").has_value());
+        QVERIFY(!calc.evaluate("__proto__").has_value());
+
+        // Valid math functions must evaluate cleanly
+        QCOMPARE(calc.evaluate("sqrt(256)").value_or(""), QStringLiteral("16"));
+        QCOMPARE(calc.evaluate("sin(0)").value_or(""), QStringLiteral("0"));
+        QCOMPARE(calc.evaluate("abs(-42)").value_or(""), QStringLiteral("42"));
+        QCOMPARE(calc.evaluate("2^10").value_or(""), QStringLiteral("1024"));
+    }
 };
 
 QTEST_MAIN(TestFuzzyMatcher)
