@@ -4,6 +4,7 @@
 
 **Next-generation, ultra-fast application launcher, command palette, and desktop intelligence hub for Wayland & X11.**
 
+[![CI](https://github.com/ArchEnjoyerakazonix/quasar-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/ArchEnjoyerakazonix/quasar-launcher/actions/workflows/ci.yml)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=c%2B%2B)](https://en.cppreference.com/w/cpp/20)
 [![Qt6](https://img.shields.io/badge/Qt-6.6+-41CD52?style=flat-square&logo=qt)](https://www.qt.io/)
 [![Wayland](https://img.shields.io/badge/Wayland-Layer--Shell-brightgreen?style=flat-square&logo=wayland)](https://wayland.freedesktop.org/)
