@@ -176,39 +176,7 @@ void ActionModel::loadFromConfig()
 
 void ActionModel::loadDefaults()
 {
-    m_actions.append({QStringLiteral("/accentcolor"),
-                      QStringLiteral("quasar-theme-selector"),
-                      QStringLiteral("color-management"),
-                      QStringLiteral("Open Quasar Theme Selector & Customizer"),
-                      ActionItem::Command, QString()});
-
-    const QString termCmd = Platform::terminalCommand(QStringLiteral("bash"));
-    if (!termCmd.isEmpty()) {
-        m_actions.append({QStringLiteral("/terminal"), termCmd,
-                          QStringLiteral("utilities-terminal"),
-                          QStringLiteral("Launch terminal"), ActionItem::Command, QString()});
-    }
-
-    if (Platform::haveBinary(QStringLiteral("gsettings"))) {
-        m_actions.append({QStringLiteral("/dark"),
-                          QStringLiteral("gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'"),
-                          QStringLiteral("weather-clear-night"),
-                          QStringLiteral("Switch system color scheme to Dark mode"),
-                          ActionItem::Command, QString()});
-        m_actions.append({QStringLiteral("/light"),
-                          QStringLiteral("gsettings set org.gnome.desktop.interface color-scheme 'default'"),
-                          QStringLiteral("weather-clear"),
-                          QStringLiteral("Switch system color scheme to Light mode"),
-                          ActionItem::Command, QString()});
-    }
-
-    if (Platform::haveBinary(QStringLiteral("cliphist"))) {
-        m_actions.append({QStringLiteral("/wipeclipboard"),
-                          QStringLiteral("cliphist wipe"),
-                          QStringLiteral("edit-clear"),
-                          QStringLiteral("Wipe clipboard history"),
-                          ActionItem::Command, QString()});
-    }
+    // No hardcoded default actions — actions are cleanly user-defined via ~/.config/quasar/actions.json
 }
 
 // ---------------------------------------------------------------------------

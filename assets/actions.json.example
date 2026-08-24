@@ -1,58 +1,8 @@
 [
     {
-        "name": "/theme",
-        "command": "quasar-theme-selector",
-        "icon": "preferences-desktop-theme",
-        "description": "Open Quasar Theme Selector & Customizer"
-    },
-    {
-        "name": "/wal",
-        "command": "quasar --sync-wal",
-        "icon": "preferences-desktop-wallpaper",
-        "description": "Sync palette with current wallpaper (Pywal)"
-    },
-    {
-        "name": "/dark",
-        "command": "gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'",
-        "icon": "weather-clear-night",
-        "description": "Switch system color scheme to Dark mode"
-    },
-    {
-        "name": "/light",
-        "command": "gsettings set org.gnome.desktop.interface color-scheme 'default'",
-        "icon": "weather-clear",
-        "description": "Switch system color scheme to Light mode"
-    },
-    {
-        "name": "/lock",
-        "command": "loginctl lock-session",
-        "icon": "system-lock-screen",
-        "description": "Lock the current session"
-    },
-    {
-        "name": "/terminal",
-        "command": "kitty",
-        "icon": "utilities-terminal",
-        "description": "Launch Terminal"
-    },
-    {
-        "name": "/wipeclipboard",
-        "command": "cliphist wipe",
-        "icon": "edit-clear",
-        "description": "Wipe clipboard history"
-    },
-    {
-        "name": "/session",
-        "type": "pipe",
-        "command": "@scripts/session.sh",
-        "icon": "system-shutdown",
-        "description": "Power management & session controls"
-    },
-    {
-        "name": "/pass",
-        "type": "pipe",
-        "command": "cd ~/.local/share/password-store && find . -name '*.gpg' | sed 's|.*/||; s|\\.gpg$||'",
-        "icon": "dialog-password",
-        "description": "Browse pass entries"
+        "name": "/example",
+        "command": "notify-send 'Hello from Quasar'",
+        "icon": "dialog-information",
+        "description": "Example custom user action"
     }
 ]
