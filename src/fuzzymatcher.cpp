@@ -161,7 +161,7 @@ void FuzzyMatcher::setQuery(const QString &newQuery) {
     }
 
     m_scoreCache.clear();
-    invalidateFilter();
+    invalidate();
     sort(0, Qt::AscendingOrder);
 
     emit queryChanged();
@@ -188,19 +188,19 @@ void FuzzyMatcher::setSourceModel(QAbstractItemModel *sourceModel) {
         track(connect(sourceModel, &QAbstractItemModel::modelReset, this, [this]() {
             m_scoreCache.clear();
             updateRoleKeys();
-            invalidateFilter();
+            invalidate();
         }));
         track(connect(sourceModel, &QAbstractItemModel::rowsInserted, this, [this]() {
             m_scoreCache.clear();
-            invalidateFilter();
+            invalidate();
         }));
         track(connect(sourceModel, &QAbstractItemModel::rowsRemoved, this, [this]() {
             m_scoreCache.clear();
-            invalidateFilter();
+            invalidate();
         }));
         track(connect(sourceModel, &QAbstractItemModel::dataChanged, this, [this]() {
             m_scoreCache.clear();
-            invalidateFilter();
+            invalidate();
         }));
     }
 }
