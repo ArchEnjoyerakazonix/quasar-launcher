@@ -11,6 +11,10 @@
 [![X11](https://img.shields.io/badge/X11-EWMH-blue?style=flat-square&logo=xorg)](https://www.x.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
+<br/><br/>
+
+<img src="assets/screenshots/preview.png" alt="Quasar Launcher Preview" width="800"/>
+
 </div>
 
 ---
