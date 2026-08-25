@@ -13,7 +13,10 @@
 
 <br/><br/>
 
-<https://github.com/ArchEnjoyerakazonix/quasar-launcher/releases/download/v1.0.0/preview.mp4>
+
+https://github.com/user-attachments/assets/4d818fbe-be28-4670-87e4-65d8f8e63cfb
+
+
 
 </div>
 
