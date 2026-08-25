@@ -298,11 +298,11 @@ QVector<AppEntry> AppIndexer::scanDirectories(const QStringList& dirs)
             if (processedIds.contains(id)) {
                 continue;
             }
+            processedIds.insert(id, true);
 
             AppEntry entry = parseDesktopFile(fileInfo.absoluteFilePath());
             if (!entry.id.isEmpty()) {
                 entries.append(std::move(entry));
-                processedIds.insert(id, true);
             }
         }
     }
