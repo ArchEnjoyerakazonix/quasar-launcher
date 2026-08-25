@@ -13,7 +13,7 @@
 
 <br/><br/>
 
-<img src="assets/screenshots/preview.gif" alt="Quasar Launcher Live Preview" width="800"/>
+<https://github.com/ArchEnjoyerakazonix/quasar-launcher/releases/download/v1.0.0/preview.mp4>
 
 </div>
 
