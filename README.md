@@ -13,7 +13,9 @@
 
 <br/><br/>
 
-<img src="assets/screenshots/preview.png" alt="Quasar Launcher Preview" width="800"/>
+<video src="https://raw.githubusercontent.com/ArchEnjoyerakazonix/quasar-launcher/main/assets/screenshots/preview.mp4" controls="controls" muted="muted" playsinline="playsinline" width="800" poster="assets/screenshots/preview.png">
+  <img src="assets/screenshots/preview.png" alt="Quasar Launcher Preview" width="800"/>
+</video>
 
 </div>
 
