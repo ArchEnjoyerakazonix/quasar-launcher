@@ -8,8 +8,11 @@ Window {
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
-    width: ThemeManager.windowWidth
-    height: ThemeManager.windowHeight
+    // The window covers the full screen so that the transparent overlay
+    // outside the launcher panel can catch mouse clicks and close it.
+    // The actual panel dimensions come from ThemeManager as before.
+    width: screen ? screen.width : ThemeManager.windowWidth
+    height: screen ? screen.height : ThemeManager.windowHeight
 
     property bool previewMode: false
 
@@ -46,10 +49,25 @@ Window {
         onActivated: root.hide()
     }
 
-    // Main Rofi Window Container (Compact floating box)
+    // Transparent fullscreen overlay — clicking anywhere outside the panel
+    // dismisses the launcher.
+    MouseArea {
+        anchors.fill: parent
+        z: 0
+        acceptedButtons: Qt.AllButtons
+        onClicked: function(mouse) {
+            if (!previewMode)
+                root.hide()
+        }
+    }
+
+    // Main launcher panel (compact floating box), centered on screen.
     Rectangle {
         id: container
-        anchors.fill: parent
+        width: ThemeManager.windowWidth
+        height: ThemeManager.windowHeight
+        anchors.centerIn: parent
+        z: 1
         radius: ThemeManager.borderRadius
 
         color: Qt.alpha(ThemeManager.backgroundColor, ThemeManager.bgOpacity)
@@ -65,6 +83,13 @@ Window {
         }
         Behavior on scale {
             NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+        }
+
+        // Eat clicks inside the panel so they don't reach the overlay below.
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+            onClicked: function(mouse) { mouse.accepted = true }
         }
 
         Column {

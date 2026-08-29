@@ -70,19 +70,24 @@ void configureLayerShell(QWindow *window)
     LayerShellQt::Window *lsWindow = LayerShellQt::Window::get(window);
     if (lsWindow) {
         lsWindow->setLayer(LayerShellQt::Window::LayerTop);
-        lsWindow->setAnchors(LayerShellQt::Window::Anchors(0));
+        // Anchor to all four edges so the compositor stretches the surface to
+        // cover the full screen.  The QML overlay MouseArea then catches every
+        // click that falls outside the centred launcher panel and hides it.
+        lsWindow->setAnchors(LayerShellQt::Window::Anchors(
+                                 LayerShellQt::Window::AnchorTop
+                                 | LayerShellQt::Window::AnchorBottom
+                                 | LayerShellQt::Window::AnchorLeft
+                                 | LayerShellQt::Window::AnchorRight));
         lsWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
         lsWindow->setExclusiveZone(-1);
         lsWindow->setScope(QStringLiteral("quasar"));
-        if (window->width() > 0 && window->height() > 0) {
-            lsWindow->setDesiredSize(QSize(window->width(), window->height()));
-        }
-        qCDebug(lcLauncher) << "layer-shell configured on LayerTop with desired size:" << window->size();
+        qCDebug(lcLauncher) << "layer-shell configured on LayerTop (fullscreen overlay)";
     }
 #else
     Q_UNUSED(window);
 #endif
 }
+
 
 } // namespace
 
